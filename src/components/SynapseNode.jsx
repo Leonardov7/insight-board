@@ -48,7 +48,7 @@ const SynapseNode = memo(({ data }) => {
                                 color: themeColor,
                                 backgroundColor: themeColor,
                                 // Si es IA, podemos hacer que el brillo sea ligeramente más intenso
-                                filter: isAi ? 'brightness(1.5)' : 'none'
+                                filter: isAi ? 'brightness(2.5)' : 'none'
                             }}
                         />
                         <span className="text-[8px] font-black uppercase tracking-tight truncate max-w-[100px] text-white/60">

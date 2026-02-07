@@ -6,7 +6,15 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { generateTargetedProvocations } from '../services/aiService';
-
+const STUDENT_COLOR_PALETTE = [
+  "#34d399", // Esmeralda
+  "#38bdf8", // Azul Cielo
+  "#fb7185", // Rosa Suave
+  "#fbbf24", // Ámbar
+  "#a78bfa", // Violeta (el que usábamos antes)
+  "#22d3ee", // Cian
+  "#f472b6", // Fucsia
+];
 const Sidebar = ({ 
   isOpen, onClose, isAdmin, currentSessionId, 
   onSwitchSession, onNewDebate,
@@ -50,33 +58,39 @@ const Sidebar = ({
   };
 
   // FUNCIÓN PARA INVOCAR AL AGENTE PROVOCADOR
+  // Dentro de Sidebar.jsx
+
   const handleInvokeAI = async () => {
-  if (!currentSessionId || isAiThinking) return;
-  
-  setIsAiThinking(true);
-  try {
-    // 1. Llamamos a la nueva función de evaluación táctica de incógnito
-    const targets = await generateTargetedProvocations(messages);
+    if (!currentSessionId || isAiThinking) return;
     
-    if (targets && targets.length > 0) {
-      // 2. Por cada objetivo identificado por la IA, enviamos una intervención
-      for (const item of targets) {
-        await sendMessage(
-          item.provocation, 
-          item.alias,       // <--- CAMBIO: Ahora usa el alias aleatorio (ej: "Mente_Critica")
-          "#6366f1",         // <--- TIP: Usa un color estándar para que parezca un alumno más
-          item.targetId,    // <--- El hilo colgará del comentario evaluado
-          currentSessionId, 
-          true              // Mantiene el flag is_ai: true para tu control interno
-        );
+    setIsAiThinking(true);
+    try {
+      // 1. La IA piensa y define objetivos
+      const targets = await generateTargetedProvocations(messages);
+      
+      if (targets && targets.length > 0) {
+        // 2. Por cada objetivo, disparamos un infiltrado
+        for (const item of targets) {
+          
+          // --- NUEVO: Selección de color aleatorio para este ataque ---
+          const randomColor = STUDENT_COLOR_PALETTE[Math.floor(Math.random() * STUDENT_COLOR_PALETTE.length)];
+
+          await sendMessage(
+            item.provocation, 
+            item.alias, 
+            randomColor,      // <--- CAMBIO AQUÍ: Usamos el color aleatorio
+            item.targetId, 
+            currentSessionId, 
+            true              // El flag is_ai sigue siendo true para tu señal secreta
+          );
+        }
       }
+    } catch (error) {
+      console.error("Fallo en la invocación de IA:", error);
+    } finally {
+      setIsAiThinking(false);
     }
-  } catch (error) {
-    console.error("Error al inyectar provocaciones dirigidas:", error);
-  } finally {
-    setIsAiThinking(false);
-  }
-};
+  };
 
   useEffect(() => {
     if (isOpen && isAdmin) fetchSessions();
