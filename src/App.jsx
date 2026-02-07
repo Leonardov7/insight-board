@@ -5,6 +5,7 @@ import AccessGuard from './components/AccessGuard';
 import Board from './components/Board';
 import InputArea from './components/InputArea';
 import Sidebar from './components/Sidebar';
+import AnalyticsModal from './components/AnalyticsModal';
 import ParticipantsList from './components/ParticipantsList';
 import { Settings, Hash, Shield, Activity, Rocket } from 'lucide-react';
 import { supabase } from './lib/supabase';
@@ -16,6 +17,8 @@ function App() {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false); // <--- 
+
   const [replyingTo, setReplyingTo] = useState(null);
 
   const { messages, sendMessage, fetchMessagesBySession, subscribeToMessages } = useMessages();
@@ -196,17 +199,25 @@ function App() {
           <ParticipantsList participants={onlineUsers} />
         </aside>
         <Sidebar
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          isAdmin={isAdmin}
-          currentSessionId={session?.id}
-          onSwitchSession={handleSwitchSession}
-          onNewDebate={handleNewDebate}
-          // AÑADE ESTAS DOS LÍNEAS:
-          messages={messages}
-          sendMessage={sendMessage}
-        />      </div>
+  isOpen={isSidebarOpen}
+  onClose={() => setIsSidebarOpen(false)}
+  isAdmin={isAdmin}
+  currentSessionId={session?.id}
+  onSwitchSession={handleSwitchSession}
+  onNewDebate={handleNewDebate}
+  messages={messages}
+  sendMessage={sendMessage}
+  setIsAnalyticsOpen={setIsAnalyticsOpen} // <--- ESTA LÍNEA ES VITAL
+/>
+        {/* INSERCIÓN DEL MODAL DE ANALÍTICA: */}
+        <AnalyticsModal 
+          isOpen={isAnalyticsOpen} 
+          onClose={() => setIsAnalyticsOpen(false)} 
+          messages={messages} 
+        />
+         </div>
     </AccessGuard>
+
   );
 }
 

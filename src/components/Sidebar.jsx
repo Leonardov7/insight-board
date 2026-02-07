@@ -17,9 +17,11 @@ const STUDENT_COLOR_PALETTE = [
 ];
 const Sidebar = ({ 
   isOpen, onClose, isAdmin, currentSessionId, 
-  onSwitchSession, onNewDebate,
-  messages, sendMessage // Recibimos estas props desde App.jsx
+  onSwitchSession, onNewDebate, 
+  messages, sendMessage,
+  setIsAnalyticsOpen // <---
 }) => {
+  
   const [sessions, setSessions] = useState([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -62,25 +64,25 @@ const Sidebar = ({
 
   const handleInvokeAI = async () => {
     if (!currentSessionId || isAiThinking) return;
-    
+
     setIsAiThinking(true);
     try {
       // 1. La IA piensa y define objetivos
       const targets = await generateTargetedProvocations(messages);
-      
+
       if (targets && targets.length > 0) {
         // 2. Por cada objetivo, disparamos un infiltrado
         for (const item of targets) {
-          
+
           // --- NUEVO: Selección de color aleatorio para este ataque ---
           const randomColor = STUDENT_COLOR_PALETTE[Math.floor(Math.random() * STUDENT_COLOR_PALETTE.length)];
 
           await sendMessage(
-            item.provocation, 
-            item.alias, 
+            item.provocation,
+            item.alias,
             randomColor,      // <--- CAMBIO AQUÍ: Usamos el color aleatorio
-            item.targetId, 
-            currentSessionId, 
+            item.targetId,
+            currentSessionId,
             true              // El flag is_ai sigue siendo true para tu señal secreta
           );
         }
@@ -108,11 +110,12 @@ const Sidebar = ({
             <Database size={14} /> Panel de Control
           </h2>
           <span className="text-[7px] text-slate-500 font-bold uppercase mt-1 tracking-widest">
-            Design Interactive Hub v4.0
+            Design Interactive Hub v1.2.0 <br />Desarrollado por Ing. Leonardo Valderrama
+          
           </span>
         </div>
-        <button 
-          onClick={onClose} 
+        <button
+          onClick={onClose}
           className="p-2 hover:bg-white/5 rounded-xl text-slate-500 hover:text-white transition-all"
         >
           <X size={20} />
@@ -147,33 +150,31 @@ const Sidebar = ({
                       <div
                         key={s.id}
                         onClick={() => onSwitchSession(s)}
-                        className={`group relative p-3 rounded-xl border transition-all cursor-pointer ${
-                          s.id === currentSessionId
+                        className={`group relative p-3 rounded-xl border transition-all cursor-pointer ${s.id === currentSessionId
                             ? 'bg-indigo-500/10 border-indigo-500/40'
                             : 'bg-white/[0.02] border-white/5 hover:border-white/10'
-                        }`}
+                          }`}
                       >
                         <div className="flex flex-col gap-1 pr-14">
                           <span className="text-[10px] font-bold text-slate-200 truncate uppercase">{s.tema || 'Sin tema'}</span>
                           <div className="flex items-center gap-2">
                             <span className="text-[8px] font-mono text-indigo-400 font-bold">{s.codigo}</span>
-                            <span className={`text-[7px] px-1.5 rounded-full border ${
-                              s.status === 'active' ? 'border-emerald-500/30 text-emerald-500' : 'border-slate-500/30 text-slate-500'
-                            } uppercase font-black`}>
+                            <span className={`text-[7px] px-1.5 rounded-full border ${s.status === 'active' ? 'border-emerald-500/30 text-emerald-500' : 'border-slate-500/30 text-slate-500'
+                              } uppercase font-black`}>
                               {s.status}
                             </span>
                           </div>
                         </div>
 
                         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); onSwitchSession(s); }} 
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onSwitchSession(s); }}
                             className="p-1.5 bg-indigo-500/20 text-indigo-400 rounded-lg hover:bg-indigo-500 hover:text-white transition-all"
                           >
                             <ExternalLink size={10} />
                           </button>
-                          <button 
-                            onClick={(e) => handleDeleteSession(e, s.id)} 
+                          <button
+                            onClick={(e) => handleDeleteSession(e, s.id)}
                             className="p-1.5 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all"
                           >
                             <Trash2 size={10} />
@@ -192,15 +193,15 @@ const Sidebar = ({
         {isAdmin && currentSessionId && (
           <section className="p-5 border border-indigo-500/20 rounded-2xl bg-indigo-500/5 space-y-4">
             <h3 className="text-[10px] font-black uppercase text-indigo-400 tracking-[0.2em] flex items-center gap-2">
-              <Zap size={14} fill="currentColor" /> IA Provocadora
+              <Zap size={14} fill="currentColor" /> Comentario
             </h3>
-            
+
             <button
               onClick={handleInvokeAI}
               disabled={isAiThinking}
               className={`w-full py-4 rounded-xl border transition-all flex items-center justify-center gap-3 font-black uppercase text-[10px] tracking-widest
-                ${isAiThinking 
-                  ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400 cursor-wait' 
+                ${isAiThinking
+                  ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400 cursor-wait'
                   : 'bg-indigo-600/20 border-indigo-500/40 text-indigo-100 hover:bg-indigo-600 hover:text-white shadow-[0_0_20px_rgba(99,102,241,0.15)]'
                 }`}
             >
@@ -210,7 +211,7 @@ const Sidebar = ({
                   Analizando Sinapsis...
                 </>
               ) : (
-                <>Lanzar Provocación</>
+                <>Lanzar Comentario</>
               )}
             </button>
             <p className="text-[8px] text-slate-500 leading-relaxed italic px-1">
@@ -219,20 +220,36 @@ const Sidebar = ({
           </section>
         )}
 
-        {/* ÁREA DE ANALÍTICA (Espacio reservado) */}
-        <section className="p-8 border-2 border-dashed border-white/5 rounded-3xl flex flex-col items-center justify-center text-center opacity-40">
-          <BarChart3 size={24} className="mb-2 text-slate-700" />
-          <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-600">Módulos de Analítica IA</p>
-          <span className="text-[6px] text-slate-700 mt-1 italic uppercase tracking-tighter">Próxima implementación: Clustering</span>
-        </section>
+        {/* SECCIÓN: ANALÍTICA AVANZADA (Solo Admin) */}
+        {isAdmin && currentSessionId && (
+          <section className="mt-4 p-4 border border-white/5 rounded-2xl bg-white/[0.01]">
+            <div className="flex items-center justify-between mb-4 px-2">
+              <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">
+                Inteligencia de Datos
+              </h3>
+              <span className="text-[8px] bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full font-bold uppercase animate-pulse">
+                Beta
+              </span>
+            </div>
 
+            <button
+              onClick={() => setIsAnalyticsOpen(true)} // Necesitaremos este nuevo estado
+              className="w-full p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all flex flex-col items-center gap-2 group"
+            >
+              <BarChart3 size={20} className="text-indigo-400 group-hover:scale-110 transition-transform" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                Abrir Monitor Semántico
+              </span>
+            </button>
+          </section>
+        )}
       </div>
 
       {/* FOOTER */}
       {isAdmin && (
         <div className="p-6 border-t border-white/5 bg-white/[0.01]">
-          <button 
-            onClick={onNewDebate} 
+          <button
+            onClick={onNewDebate}
             className="w-full py-4 bg-indigo-600/10 hover:bg-indigo-600 hover:text-white text-indigo-400 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border border-indigo-500/20 transition-all"
           >
             <RefreshCw size={14} /> Iniciar Nuevo Debate
