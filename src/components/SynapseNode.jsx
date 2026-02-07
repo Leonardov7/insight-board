@@ -1,46 +1,66 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
-import { Shield, MessageSquareReply, Maximize2 } from 'lucide-react';
+// Mantenemos Zap para el Docente
+import { Shield, MessageSquareReply, Maximize2, Zap } from 'lucide-react';
 
 const SynapseNode = memo(({ data }) => {
-    // Extraemos onIsolate que viene desde el Board
     const { msg, userAlias, onReply, isRoot, onIsolate } = data;
 
-    const isDocente = msg.alias === "Docente" || msg.alias === "Administrador";
+    const isAi = msg.is_ai;
+    const isDocente = msg.alias === "Docente" || msg.alias === "Administrador" || msg.alias === "Admin";
+
+    // Eliminamos el forzado de color para la IA para que use su color de "estudiante"
     const themeColor = msg.color_theme || '#6366f1';
 
     return (
         <div className="relative group transition-all duration-300">
-            {/* Resplandor Neón */}
+            {/* Resplandor Neón: Normal para todos, ligeramente más opaco para el Docente */}
             <div
-                className="absolute -inset-1 blur-xl opacity-20 group-hover:opacity-50 transition-opacity rounded-full"
+                className={`absolute -inset-1 blur-xl transition-opacity rounded-full opacity-20 group-hover:opacity-50`}
                 style={{ backgroundColor: themeColor }}
             />
 
-            {/* Cuerpo del Orbe: Compactado al máximo */}
+            {/* Cuerpo del Orbe */}
             <div
                 className={`relative min-w-[160px] max-w-[220px] p-3 rounded-[1.2rem] border backdrop-blur-md shadow-lg
-          ${isRoot ? 'ring-1 ring-white/20' : ''}`}
+                ${isRoot ? 'ring-1 ring-white/20' : ''} 
+                ${isDocente ? 'ring-2 ring-indigo-500/50 border-indigo-400/50' : 'border-white/10'}`}
                 style={{
                     backgroundColor: `${themeColor}15`,
-                    borderColor: `${themeColor}44`,
+                    borderColor: isDocente ? '#818cf8' : `${themeColor}44`,
                 }}
             >
+                {/* ETIQUETA DOCENTE: Ahora el Rayito lo lleva el profesor */}
+                {isDocente && (
+                    <div className="absolute -top-3 -left-1 bg-indigo-600 text-[7px] font-black px-2 py-0.5 rounded-full uppercase text-white flex items-center gap-1 shadow-lg border border-indigo-400 z-10">
+                        <Zap size={8} fill="currentColor" />
+                        {msg.alias}
+                    </div>
+                )}
+
                 <div className="flex justify-between items-center mb-1.5">
                     <div className="flex items-center gap-1.5">
+                        {/* Pequeño pulso: Única marca secreta que solo tú (el docente) notarás en los hilos de IA */}
                         <div
-                            className="w-1.5 h-1.5 rounded-full shadow-[0_0_5px_currentColor]"
-                            style={{ color: themeColor, backgroundColor: themeColor }}
+                            className={`w-1.5 h-1.5 rounded-full shadow-[0_0_5px_currentColor] 
+    ${isAi ? 'animate-[pulse_1.5s_ease-in-out_infinite]' : ''}`} // Latido exclusivo para la IA
+                            style={{
+                                color: themeColor,
+                                backgroundColor: themeColor,
+                                // Si es IA, podemos hacer que el brillo sea ligeramente más intenso
+                                filter: isAi ? 'brightness(1.5)' : 'none'
+                            }}
                         />
-                        <span className="text-[8px] font-black uppercase tracking-tight text-white/60 truncate max-w-[80px]">
+                        <span className="text-[8px] font-black uppercase tracking-tight truncate max-w-[100px] text-white/60">
                             {msg.alias}
                         </span>
                     </div>
+                    {/* El escudo solo aparece si es docente y no es una intervención secreta */}
                     {isDocente && <Shield size={10} className="text-indigo-400" />}
                 </div>
 
-                <p className="text-[11px] text-slate-100 leading-[1.3] font-medium mb-2">
-                    {/* Esta expresión regular quita todo lo que empiece por "> " hasta el primer espacio/salto de línea */}
+                {/* Texto: Eliminamos la cursiva de IA para que no sospechen */}
+                <p className="text-[11px] leading-[1.3] font-medium mb-2 text-slate-100">
                     {msg.content.replace(/^> .*?\s/, "")}
                 </p>
 
@@ -50,7 +70,6 @@ const SynapseNode = memo(({ data }) => {
                     </span>
 
                     <div className="flex items-center gap-1">
-                        {/* NUEVO: Botón de Aislamiento (Modo Enfoque) */}
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -62,7 +81,6 @@ const SynapseNode = memo(({ data }) => {
                             <Maximize2 size={11} />
                         </button>
 
-                        {/* Botón de Respuesta */}
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -77,18 +95,8 @@ const SynapseNode = memo(({ data }) => {
                 </div>
             </div>
 
-            {/* Conectores invisibles pero funcionales */}
-            <Handle
-                type="target"
-                position={Position.Left}
-                className="!opacity-0"
-                style={{ left: '10px' }}
-            />
-            <Handle
-                type="source"
-                position={Position.Right}
-                className="!opacity-0"
-            />
+            <Handle type="target" position={Position.Left} className="!opacity-0" style={{ left: '10px' }} />
+            <Handle type="source" position={Position.Right} className="!opacity-0" />
         </div>
     );
 });

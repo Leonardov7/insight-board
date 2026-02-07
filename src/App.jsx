@@ -36,22 +36,22 @@ function App() {
     const channel = supabase.channel(channelName, {
       config: { broadcast: { self: true } }
     })
-    .on('broadcast', { event: 'START_SESSION' }, () => {
-      console.log("⚡ [RADIO] Señal recibida: Activando tablero");
-      setSession(prev => ({ ...prev, status: 'active' }));
-    })
-    .on('postgres_changes', 
-      { event: 'UPDATE', schema: 'public', table: 'sesiones', filter: `id=eq.${session.id}` },
-      (payload) => {
-        if (payload.new.status === 'active') {
-          console.log("🚀 [DB] Cambio detectado por Postgres");
-          setSession(prev => ({ ...prev, status: 'active' }));
+      .on('broadcast', { event: 'START_SESSION' }, () => {
+        console.log("⚡ [RADIO] Señal recibida: Activando tablero");
+        setSession(prev => ({ ...prev, status: 'active' }));
+      })
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'sesiones', filter: `id=eq.${session.id}` },
+        (payload) => {
+          if (payload.new.status === 'active') {
+            console.log("🚀 [DB] Cambio detectado por Postgres");
+            setSession(prev => ({ ...prev, status: 'active' }));
+          }
         }
-      }
-    )
-    .subscribe((status) => {
-      console.log(`📶 [ANTENA] Conexión (${isAdmin ? 'DOCENTE' : 'ALUMNO'}):`, status);
-    });
+      )
+      .subscribe((status) => {
+        console.log(`📶 [ANTENA] Conexión (${isAdmin ? 'DOCENTE' : 'ALUMNO'}):`, status);
+      });
 
     // 2. PLAN B: MOTOR DE RESCATE (Sondeo incondicional)
     // Este motor ignora errores de red y sigue intentando cada 3 segundos.
@@ -63,7 +63,7 @@ function App() {
             .select('status')
             .eq('id', session.id)
             .maybeSingle();
-          
+
           if (error) {
             console.warn("🌐 [RED] Buscando señal... (Reintentando)");
             return;
@@ -195,8 +195,17 @@ function App() {
         <aside className="w-64 bg-[#0e0e11] border-l border-white/5 shadow-2xl z-30">
           <ParticipantsList participants={onlineUsers} />
         </aside>
-        <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} isAdmin={isAdmin} currentSessionId={session?.id} onSwitchSession={handleSwitchSession} onNewDebate={handleNewDebate} />
-      </div>
+        <Sidebar
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          isAdmin={isAdmin}
+          currentSessionId={session?.id}
+          onSwitchSession={handleSwitchSession}
+          onNewDebate={handleNewDebate}
+          // AÑADE ESTAS DOS LÍNEAS:
+          messages={messages}
+          sendMessage={sendMessage}
+        />      </div>
     </AccessGuard>
   );
 }

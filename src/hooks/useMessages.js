@@ -4,14 +4,14 @@ import { supabase } from '../lib/supabase';
 export const useMessages = () => {
   const [messages, setMessages] = useState([]);
 
-  // 1. Carga inicial: Descarga el historial al entrar o refrescar
+  // 1. Carga inicial: Ahora traerá 'is_ai' automáticamente por el select('*')
   const fetchMessagesBySession = useCallback(async (sessionId) => {
     if (!sessionId) return;
     
     const { data, error } = await supabase
       .from('intervenciones')
       .select('*')
-      .eq('session_id', sessionId) // <-- UNIFICADO A session_id
+      .eq('session_id', sessionId)
       .order('created_at', { ascending: true });
 
     if (!error && data) {
@@ -19,7 +19,7 @@ export const useMessages = () => {
     }
   }, []);
 
-  // 2. Suscripción en Tiempo Real: El corazón de la Red Neuronal
+  // 2. Suscripción en Tiempo Real: El payload incluirá 'is_ai' en payload.new
   const subscribeToMessages = useCallback((sessionId) => {
     if (!sessionId) return;
 
@@ -28,52 +28,48 @@ export const useMessages = () => {
       .on(
         'postgres_changes',
         { 
-          event: '*', // Escucha INSERT (nuevos) y UPDATE (movimientos del admin)
+          event: '*', 
           schema: 'public', 
           table: 'intervenciones',
-          filter: `session_id=eq.${sessionId}` // <-- UNIFICADO A session_id
+          filter: `session_id=eq.${sessionId}` 
         },
         (payload) => {
-          console.log("Sinapsis detectada:", payload);
-
           if (payload.eventType === 'INSERT') {
-            // Se añade la nueva idea al mapa al instante
             setMessages((prev) => [...prev, payload.new]);
           } 
           else if (payload.eventType === 'UPDATE') {
-            // Se actualiza la posición o el contenido si el admin lo cambia
             setMessages((prev) => 
               prev.map((msg) => msg.id === payload.new.id ? payload.new : msg)
             );
           }
         }
       )
-      .subscribe((status) => {
-        console.log(`📡 Conexión con Sesión ${sessionId}:`, status);
-      });
+      .subscribe();
 
-    // Limpieza al desmontar para evitar duplicidad de conexiones
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
 
-  // 3. Función para enviar mensajes: Crea la conexión en la DB
-  const sendMessage = async (content, alias, color, parentId, sessionId) => {
-    if (!sessionId) return;
+  // 3. Función para enviar mensajes: Agregamos is_ai: false por seguridad
+  const sendMessage = async (content, alias, color, parentId, sessionId, isAi = false) => {
+  if (!sessionId) return;
 
-    const { error } = await supabase.from('intervenciones').insert([{
+  const { error } = await supabase
+    .from('intervenciones')
+    .insert([{
       content,
       alias,
       color_theme: color,
       parent_id: parentId,
-      session_id: sessionId // <-- CORREGIDO: de 'sesion_id' a 'session_id'
+      session_id: sessionId,
+      is_ai: isAi // Ahora acepta el valor que le pasemos
     }]);
 
-    if (error) {
-      console.error("❌ Fallo en la sinapsis:", error.message);
-    }
-  };
+  if (error) {
+    console.error("❌ Fallo en la sinapsis:", error.message);
+  }
+};
 
   return { messages, sendMessage, fetchMessagesBySession, subscribeToMessages };
 };
