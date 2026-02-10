@@ -16,7 +16,7 @@ export const generateTargetedProvocations = async (messages) => {
     Eres un estudiante en un debate. Tu rol es ser un "Infiltrado Provocador".
     PREGUNTA SEMILLA: "${seed?.content}"
     HISTORIAL: ${messages.map(m => `[ID: ${m.id}] ${m.alias}: ${m.content}`).join('\n')}
-    TAREA: Identifica hasta 2 comentarios y cuestiona su lógica.
+    TAREA: Identifica hasta 2 comentarios y cuestiona su lógica de forma incisiva pero educada.
     JSON: { "provocations": [{"targetId": "id", "provocation": "pregunta corta", "alias": "${sessionAlias}"}] }
   `;
 
@@ -38,7 +38,7 @@ export const generateTargetedProvocations = async (messages) => {
   }
 };
 
-// --- MÓDULO 2.0: MONITOR SEMÁNTICO (NUEVO) ---
+// --- MÓDULO 2.0: MONITOR SEMÁNTICO ---
 export const getSemanticClusters = async (messages) => {
   if (messages.length < 3) return [];
 
@@ -66,22 +66,53 @@ export const getSemanticClusters = async (messages) => {
   }
 };
 
-//--------------Módulo de Gamificación (Ejemplo)----------------
+// --- MÓDULO 3.0: GAMIFICACIÓN ROBUSTA (ACTUALIZADO) ---
 export const getEngagementRanking = async (messages) => {
-  if (messages.length < 5) return []; // Necesitamos una base mínima de debate
+  // 1. CONTEXTO TOTAL: Enviamos todo para que la IA entienda la jerarquía
+  const fullContext = messages.map(m => ({
+    role: m.alias?.toLowerCase() === 'docente' ? 'VERDAD_ACADÉMICA' : (m.is_ai ? 'PROVOCADOR' : 'ESTUDIANTE'),
+    alias: m.alias,
+    content: m.content
+  }));
+
+  // 2. CANDIDATOS: Filtramos para que solo los estudiantes reales puedan ganar medallas
+  const students = messages.filter(m => 
+    !m.is_ai && 
+    m.alias?.toLowerCase() !== 'docente' && 
+    m.alias?.toLowerCase() !== 'profesor'
+  );
+
+  console.log(`📊 [ANALISTA] Estudiantes reales para evaluar: ${students.length}`);
+
+  // Umbral de 5 mensajes de alumnos para asegurar que hay debate real
+  if (students.length < 5) {
+    console.warn("⚠️ [ANALISTA] Base insuficiente para ranking riguroso (min 5 alumnos).");
+    return [];
+  }
 
   const prompt = `
-    Analiza el historial de este debate académico.
-    MENSAJES: ${messages.map(m => `[${m.alias}]: ${m.content}`).join('\n')}
+    Actúa como un Evaluador Académico Estricto. Tu tarea es generar el Top 3 (Cuadro de Honor).
     
-    TAREA:
-    Identifica a los 3 mejores participantes (excluyendo al docente).
-    JSON: { "ranking": [{
-      "alias": "Nombre", 
-      "score": 0, 
-      "badge": "Disruptor|Conector|Analista", 
-      "reason": "por qué (máx 10 palabras)"
-    }] }
+    CONTEXTO DEL DEBATE:
+    ${JSON.stringify(fullContext)}
+
+    REGLAS DE ORO PARA EL RANKING:
+    1. ANCLA DE VERDAD: Usa los mensajes marcados como 'VERDAD_ACADÉMICA' (Docente) como la única fuente de verdad técnica. 
+    2. PENALIZACIÓN TROLL: Si un estudiante dice algo técnicamente incorrecto, absurdo o que parece una burla (ej: definir Arduino como un zapato o una empanada), QUÉDALO FUERA del ranking inmediatamente. No importa cuántas veces haya participado.
+    3. RIGOR: No estás obligado a llenar los 3 puestos. Si solo 1 estudiante hizo aportes serios, pon 'null' en los otros puestos. Solo premia la calidad, la profundidad y el respeto a la verdad académica establecida por el docente.
+    4. ROLES:
+       - DISRUPTOR: Cuestiona con lógica superior.
+       - CONECTOR: Sintetiza y une ideas del docente y compañeros de forma brillante.
+       - ANALISTA: Aporta rigor técnico y precisión.
+
+    TAREA: Devuelve un Top 3. Si un puesto no tiene un candidato digno, usa null.
+    JSON: { 
+      "ranking": [
+        { "alias": "Nombre", "badge": "Rol", "definition": "Qué significa este rol", "reason": "Argumento pedagógico basado en su interacción" },
+        null, 
+        null
+      ] 
+    }
   `;
 
   try {
@@ -90,14 +121,24 @@ export const getEngagementRanking = async (messages) => {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DEEPSEEK_API_KEY}` },
       body: JSON.stringify({
         model: "deepseek-chat",
-        messages: [{ role: "system", content: "Analista de comportamiento académico." }, { role: "user", content: prompt }],
+        messages: [
+          { role: "system", content: "Eres un decano universitario imparcial y extremadamente riguroso." }, 
+          { role: "user", content: prompt }
+        ],
         response_format: { type: 'json_object' }
       })
     });
+    
     const data = await response.json();
-    return JSON.parse(data.choices[0].message.content).ranking || [];
+    const rawRanking = JSON.parse(data.choices[0].message.content).ranking;
+    
+    // Filtramos los valores nulos para enviar solo los ganadores reales a la interfaz
+    const finalRanking = rawRanking.filter(item => item !== null);
+    console.log("🏆 [ANALISTA] Cuadro de Honor validado:", finalRanking);
+    return finalRanking;
+    
   } catch (error) {
-    console.error("Error en ranking:", error);
+    console.error("❌ [ANALISTA] Error crítico en evaluación:", error);
     return [];
   }
 };

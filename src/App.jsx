@@ -7,8 +7,10 @@ import InputArea from './components/InputArea';
 import Sidebar from './components/Sidebar';
 import AnalyticsModal from './components/AnalyticsModal';
 import ParticipantsList from './components/ParticipantsList';
+import Leaderboard from './components/Leaderboard'; // <--- AGREGADO
 import { Settings, Hash, Shield, Activity, Rocket } from 'lucide-react';
 import { supabase } from './lib/supabase';
+import { getEngagementRanking } from './services/aiService'; // <--- AGREGADO
 
 function App() {
   const queryParams = new URLSearchParams(window.location.search);
@@ -18,7 +20,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false); // <--- 
-
+  const [ranking, setRanking] = useState([]);
   const [replyingTo, setReplyingTo] = useState(null);
 
   const { messages, sendMessage, fetchMessagesBySession, subscribeToMessages } = useMessages();
@@ -90,6 +92,21 @@ function App() {
     };
   }, [session?.id]);
 
+  // --- PULSO DE GAMIFICACIÓN AUTÓNOMO ---
+  useEffect(() => {
+    if (messages.length >= 7) {
+      const runPulse = async () => {
+        try {
+          const newRanking = await getEngagementRanking(messages);
+          setRanking(newRanking);
+        } catch (error) {
+          console.error("❌ [GAMIFICACIÓN] Fallo en el pulso:", error);
+        }
+      };
+      runPulse();
+    }
+  }, [messages.length]); // <--- AGREGADO: Evaluación automática tras umbral
+
   // --- FUNCIÓN DE INICIO (DOCENTE) ---
   const handleStartSinapsis = async () => {
     if (!session?.id) return;
@@ -158,12 +175,14 @@ function App() {
                 <Hash size={14} className="text-indigo-400" />
                 <span className="text-sm font-black text-white font-mono tracking-tighter">{session?.codigo}</span>
               </div>
-              {isAdmin && session?.status === 'waiting' && (
+              {/* BOTÓN DINÁMICO: Aparece si está en espera o si fue inactivada */}
+              {isAdmin && (session?.status === 'waiting' || session?.status === 'inactive') && (
                 <button
                   onClick={handleStartSinapsis}
-                  className="px-4 py-1.5 bg-emerald-500 text-[#0a0a0c] text-[10px] font-black uppercase rounded-lg hover:bg-emerald-400 transition-all flex items-center gap-2 animate-pulse"
+                  className="px-4 py-1.5 bg-emerald-500 text-[#0a0a0c] text-[10px] font-black uppercase rounded-lg hover:bg-emerald-400 transition-all flex items-center gap-2 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.4)]"
                 >
-                  <Rocket size={12} /> Iniciar Sinapsis
+                  <Rocket size={12} />
+                  {session?.status === 'inactive' ? 'Reactivar Sinapsis' : 'Iniciar Sinapsis'}
                 </button>
               )}
             </div>
@@ -195,29 +214,35 @@ function App() {
             </div>
           </footer>
         </div>
-        <aside className="w-64 bg-[#0e0e11] border-l border-white/5 shadow-2xl z-30">
+        <aside className="w-64 bg-[#0e0e11] border-l border-white/5 shadow-2xl z-30 flex flex-col overflow-y-auto custom-scrollbar">
+          {/* 1. Lista de Usuarios Online */}
           <ParticipantsList participants={onlineUsers} />
-        </aside>
-        <Sidebar
-  isOpen={isSidebarOpen}
-  onClose={() => setIsSidebarOpen(false)}
-  isAdmin={isAdmin}
-  currentSessionId={session?.id}
-  onSwitchSession={handleSwitchSession}
-  onNewDebate={handleNewDebate}
-  messages={messages}
-  sendMessage={sendMessage}
-  setIsAnalyticsOpen={setIsAnalyticsOpen} // <--- ESTA LÍNEA ES VITAL
-/>
-        {/* INSERCIÓN DEL MODAL DE ANALÍTICA: */}
-        <AnalyticsModal 
-          isOpen={isAnalyticsOpen} 
-          onClose={() => setIsAnalyticsOpen(false)} 
-          messages={messages} 
-        />
-         </div>
-    </AccessGuard>
 
+          {/* 2. Cuadro de Honor (Ahora integrado aquí) */}
+          <Leaderboard ranking={ranking} />
+        </aside>
+
+        <Sidebar
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          isAdmin={isAdmin}
+          currentSessionId={session?.id}
+          onSwitchSession={handleSwitchSession}
+          onNewDebate={handleNewDebate}
+          messages={messages}
+          sendMessage={sendMessage}
+          setIsAnalyticsOpen={setIsAnalyticsOpen}
+        />
+
+        <AnalyticsModal
+          isOpen={isAnalyticsOpen}
+          onClose={() => setIsAnalyticsOpen(false)}
+          messages={messages}
+        />
+
+        {/* ELIMINA EL <Leaderboard ranking={ranking} /> QUE ESTABA AQUÍ AFUERA */}
+      </div>
+    </AccessGuard>
   );
 }
 

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Brain, Target, Zap, Loader2, TrendingUp, TrendingDown, Users, FileDown } from 'lucide-react'; 
 // CORRECCIÓN 1: Importar getEngagementRanking
 import { getSemanticClusters, getEngagementRanking } from '../services/aiService';
-import jsPDF from 'jsPDF';
+import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const AnalyticsModal = ({ isOpen, onClose, messages = [] }) => {

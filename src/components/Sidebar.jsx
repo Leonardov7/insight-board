@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import {
   X, History, Trash2, ExternalLink, RefreshCw,
   Database, ChevronDown, ChevronRight, MessageSquare, BarChart3,
-  Zap, Loader2 // Añadidos para la IA
+  Zap, Loader2, Activity // <--- AGREGADO: Activity para el estado
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { generateTargetedProvocations } from '../services/aiService';
+
 const STUDENT_COLOR_PALETTE = [
   "#34d399", // Esmeralda
   "#38bdf8", // Azul Cielo
@@ -15,6 +16,7 @@ const STUDENT_COLOR_PALETTE = [
   "#22d3ee", // Cian
   "#f472b6", // Fucsia
 ];
+
 const Sidebar = ({ 
   isOpen, onClose, isAdmin, currentSessionId, 
   onSwitchSession, onNewDebate, 
@@ -36,6 +38,23 @@ const Sidebar = ({
 
     if (!error) setSessions(data);
     setLoading(false);
+  };
+
+  // --- NUEVA FUNCIÓN: CAMBIAR ESTADO DE SINAPSIS ---
+  const handleToggleStatus = async (e, sessionId, currentStatus) => {
+    e.stopPropagation();
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    
+    const { error } = await supabase
+      .from('sesiones')
+      .update({ status: newStatus })
+      .eq('id', sessionId);
+
+    if (!error) {
+      fetchSessions(); // Refrescamos la lista para ver el cambio
+    } else {
+      console.error("Error al cambiar estado:", error.message);
+    }
   };
 
   const handleDeleteSession = async (e, sessionId) => {
@@ -60,30 +79,24 @@ const Sidebar = ({
   };
 
   // FUNCIÓN PARA INVOCAR AL AGENTE PROVOCADOR
-  // Dentro de Sidebar.jsx
-
   const handleInvokeAI = async () => {
     if (!currentSessionId || isAiThinking) return;
 
     setIsAiThinking(true);
     try {
-      // 1. La IA piensa y define objetivos
       const targets = await generateTargetedProvocations(messages);
 
       if (targets && targets.length > 0) {
-        // 2. Por cada objetivo, disparamos un infiltrado
         for (const item of targets) {
-
-          // --- NUEVO: Selección de color aleatorio para este ataque ---
           const randomColor = STUDENT_COLOR_PALETTE[Math.floor(Math.random() * STUDENT_COLOR_PALETTE.length)];
 
           await sendMessage(
             item.provocation,
             item.alias,
-            randomColor,      // <--- CAMBIO AQUÍ: Usamos el color aleatorio
+            randomColor,
             item.targetId,
             currentSessionId,
-            true              // El flag is_ai sigue siendo true para tu señal secreta
+            true
           );
         }
       }
@@ -111,7 +124,6 @@ const Sidebar = ({
           </h2>
           <span className="text-[7px] text-slate-500 font-bold uppercase mt-1 tracking-widest">
             Design Interactive Hub v1.2.0 <br />Desarrollado por Ing. Leonardo Valderrama
-          
           </span>
         </div>
         <button
@@ -167,6 +179,15 @@ const Sidebar = ({
                         </div>
 
                         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* NUEVO: BOTÓN PARA INACTIVAR / ACTIVAR */}
+                          <button
+                            onClick={(e) => handleToggleStatus(e, s.id, s.status)}
+                            className={`p-1.5 border rounded-lg transition-all ${s.status === 'active' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-white/5 text-slate-500 border-white/10'}`}
+                            title={s.status === 'active' ? 'Inactivar Sinapsis' : 'Activar Sinapsis'}
+                          >
+                            <Activity size={10} className={s.status === 'active' ? 'animate-pulse' : ''} />
+                          </button>
+
                           <button
                             onClick={(e) => { e.stopPropagation(); onSwitchSession(s); }}
                             className="p-1.5 bg-indigo-500/20 text-indigo-400 rounded-lg hover:bg-indigo-500 hover:text-white transition-all"
@@ -189,7 +210,7 @@ const Sidebar = ({
           </section>
         )}
 
-        {/* --- NUEVO BLOQUE: IA ESTRATÉGICA (Solo Admin) --- */}
+        {/* IA ESTRATÉGICA */}
         {isAdmin && currentSessionId && (
           <section className="p-5 border border-indigo-500/20 rounded-2xl bg-indigo-500/5 space-y-4">
             <h3 className="text-[10px] font-black uppercase text-indigo-400 tracking-[0.2em] flex items-center gap-2">
@@ -220,7 +241,7 @@ const Sidebar = ({
           </section>
         )}
 
-        {/* SECCIÓN: ANALÍTICA AVANZADA (Solo Admin) */}
+        {/* ANALÍTICA AVANZADA */}
         {isAdmin && currentSessionId && (
           <section className="mt-4 p-4 border border-white/5 rounded-2xl bg-white/[0.01]">
             <div className="flex items-center justify-between mb-4 px-2">
@@ -233,7 +254,7 @@ const Sidebar = ({
             </div>
 
             <button
-              onClick={() => setIsAnalyticsOpen(true)} // Necesitaremos este nuevo estado
+              onClick={() => setIsAnalyticsOpen(true)}
               className="w-full p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all flex flex-col items-center gap-2 group"
             >
               <BarChart3 size={20} className="text-indigo-400 group-hover:scale-110 transition-transform" />
