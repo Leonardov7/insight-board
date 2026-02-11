@@ -6,14 +6,39 @@ import Board from './components/Board';
 import InputArea from './components/InputArea';
 import Sidebar from './components/Sidebar';
 import AnalyticsModal from './components/AnalyticsModal';
-import TopStatusHub from './components/TopStatusHub'; // <--- NUEVO: El centro de control desplegable
-import { Settings, Hash, Activity, Rocket } from 'lucide-react';
+import TopStatusHub from './components/TopStatusHub';
+import { Settings, Hash, Activity, Rocket, Zap, Database, LogOut } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { getEngagementRanking } from './services/aiService';
 
+// --- NUEVO COMPONENTE: LOGIN ---
+const LoginView = () => (
+  <div className="h-screen w-screen bg-[#060608] flex items-center justify-center p-6">
+    <div className="max-w-md w-full bg-[#0e0e12] border border-white/10 rounded-[3rem] p-12 text-center shadow-2xl relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
+      <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">Bienvenido</h2>
+      <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-10">Gestiona tu Red Sináptica Profesional</p>
+      
+      <button 
+        onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })}
+        className="w-full py-4 bg-white text-black rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all flex items-center justify-center gap-3 shadow-lg"
+      >
+        <img src="https://www.google.com/favicon.ico" className="w-4 h-4" alt="Google" />
+        Entrar con Google
+      </button>
+    </div>
+  </div>
+);
+
 function App() {
   const queryParams = new URLSearchParams(window.location.search);
-  const isAdmin = queryParams.get('admin') === 'true';
+  
+  // --- NUEVOS ESTADOS DE IDENTIDAD ---
+  const [sessionAuth, setSessionAuth] = useState(null);
+  const [appView, setAppView] = useState('launcher'); // 'launcher' | 'insight-board'
+  
+  // Mantenemos el soporte para el parámetro admin o lo vinculamos al login
+  const isAdmin = queryParams.get('admin') === 'true' || !!sessionAuth;
 
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
@@ -24,6 +49,13 @@ function App() {
 
   const { messages, sendMessage, fetchMessagesBySession, subscribeToMessages } = useMessages();
   const onlineUsers = usePresence(session?.id, user);
+
+  // --- ESCUCHA DE AUTENTICACIÓN ---
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session: s } }) => setSessionAuth(s));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => setSessionAuth(s));
+    return () => subscription.unsubscribe();
+  }, []);
 
   // --- ANTENA DE SINCRONIZACIÓN ---
   useEffect(() => {
@@ -108,6 +140,45 @@ function App() {
     setIsSidebarOpen(false);
   };
 
+  // --- LÓGICA DE NAVEGACIÓN ---
+  if (!sessionAuth && isAdmin) return <LoginView />;
+
+  if (appView === 'launcher' && isAdmin) {
+    return (
+      <div className="h-screen w-screen bg-[#060608] flex flex-col items-center justify-center p-10 font-sans">
+        <div className="text-center mb-16">
+          <h2 className="text-white font-black uppercase tracking-[0.4em] text-[10px] mb-2 opacity-40">Ecosistema Cognitivo</h2>
+          <h1 className="text-3xl font-black text-white uppercase italic tracking-tighter">Mis Aplicaciones</h1>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
+          <button 
+            onClick={() => setAppView('insight-board')}
+            className="p-12 bg-indigo-600/5 border border-indigo-500/20 rounded-[3rem] hover:bg-indigo-600/10 hover:border-indigo-500/50 transition-all group relative overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <Zap className="text-indigo-400 mb-6 group-hover:scale-110 transition-transform" size={48} />
+            <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Insight Board</h3>
+            <p className="text-[10px] text-slate-500 uppercase font-bold mt-3 tracking-widest">Red de Sinapsis en Vivo</p>
+          </button>
+          
+          <div className="p-12 bg-white/[0.02] border border-white/5 rounded-[3rem] opacity-30 grayscale cursor-not-allowed">
+            <Database className="text-slate-500 mb-6" size={48} />
+            <h3 className="text-slate-500 font-black uppercase italic tracking-tighter text-xl">Dendron LMS</h3>
+            <p className="text-[10px] text-slate-600 uppercase font-bold mt-3 tracking-widest">Próxima Integración</p>
+          </div>
+        </div>
+
+        <button 
+          onClick={() => supabase.auth.signOut()}
+          className="mt-20 flex items-center gap-2 text-slate-600 hover:text-rose-500 transition-colors text-[10px] font-black uppercase tracking-widest"
+        >
+          <LogOut size={14} /> Cerrar Sesión
+        </button>
+      </div>
+    );
+  }
+
   const hasSeed = messages.length > 0;
   const canPost = isAdmin || hasSeed;
 
@@ -122,10 +193,10 @@ function App() {
         {/* HEADER PRINCIPAL */}
         <header className={`h-16 border-b flex justify-between items-center px-8 z-50 backdrop-blur-xl ${isAdmin ? 'bg-indigo-950/20 border-indigo-500/30' : 'bg-[#0e0e12]/80 border-white/5'}`}>
           <div className="flex items-center gap-8">
-            <div className="flex flex-col">
+            <button onClick={() => setAppView('launcher')} className="flex flex-col hover:opacity-70 transition-opacity">
               <span className="text-[8px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-0.5">Red de Sinapsis</span>
               <h1 className="text-xs font-bold uppercase truncate max-w-[200px] tracking-tight">{session?.tema}</h1>
-            </div>
+            </button>
             
             <div className="bg-indigo-600/10 border border-indigo-500/20 px-4 py-1.5 rounded-xl flex items-center gap-3">
               <Hash size={14} className="text-indigo-400" />
@@ -157,7 +228,6 @@ function App() {
         {/* CONTENEDOR CENTRAL */}
         <div className="flex-1 relative flex flex-col overflow-hidden">
           
-          {/* EL HUB DESPLEGABLE (Mentes + Podio) */}
           {session && (
             <TopStatusHub 
               connectedUsers={onlineUsers} 
@@ -166,7 +236,6 @@ function App() {
             />
           )}
 
-          {/* TABLERO DE GRAFOS (El espacio ahora es total) */}
           <main className="flex-1 relative bg-[#070709] z-10">
             <Board 
               messages={messages} 
@@ -176,7 +245,6 @@ function App() {
             />
           </main>
 
-          {/* ÁREA DE ENTRADA */}
           <footer className="p-6 bg-[#0a0a0c]/95 border-t border-white/5 z-40">
             <div className="max-w-4xl mx-auto">
               {canPost ? (
@@ -191,7 +259,6 @@ function App() {
           </footer>
         </div>
 
-        {/* COMPONENTES DE APOYO (OCULTOS INICIALMENTE) */}
         <Sidebar
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
