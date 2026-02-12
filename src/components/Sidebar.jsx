@@ -31,15 +31,26 @@ const Sidebar = ({
 
   // Recupera todas las sesiones del docente desde Supabase
   const fetchSessions = async () => {
-    setLoading(true);
+  setLoading(true);
+
+  // 1. Obtenemos el usuario autenticado de Supabase
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (user) {
+    // 2. Filtramos la consulta usando el ID del usuario
     const { data, error } = await supabase
       .from('sesiones')
       .select(`*, intervenciones (id)`)
+      .eq('owner_id', user.id) // <--- ESTE ES EL FILTRO DE PRIVACIDAD
       .order('created_at', { ascending: false });
 
-    if (!error) setSessions(data);
-    setLoading(false);
-  };
+    if (!error) {
+      setSessions(data || []);
+    }
+  }
+  
+  setLoading(false);
+};
 
   // Alterna el estado de la sinapsis entre activo e inactivo
   const handleToggleStatus = async (e, sessionId, currentStatus) => {

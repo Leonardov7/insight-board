@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 export const useMessages = () => {
   const [messages, setMessages] = useState([]);
 
-  // 1. Carga inicial: Ahora traerá 'is_ai' automáticamente por el select('*')
+  // 1. Carga inicial: Mantiene el select('*') para no perder campos como 'is_ai' o 'color_theme'
   const fetchMessagesBySession = useCallback(async (sessionId) => {
     if (!sessionId) return;
     
@@ -19,7 +19,7 @@ export const useMessages = () => {
     }
   }, []);
 
-  // 2. Suscripción en Tiempo Real: El payload incluirá 'is_ai' en payload.new
+  // 2. Suscripción en Tiempo Real: Respeta el filtrado por canal de sesión
   const subscribeToMessages = useCallback((sessionId) => {
     if (!sessionId) return;
 
@@ -51,25 +51,26 @@ export const useMessages = () => {
     };
   }, []);
 
-  // 3. Función para enviar mensajes: Agregamos is_ai: false por seguridad
+  // 3. Envío de mensajes: Mantiene todos los parámetros originales, incluyendo isAi
   const sendMessage = async (content, alias, color, parentId, sessionId, isAi = false) => {
-  if (!sessionId) return;
+    if (!sessionId) return;
 
-  const { error } = await supabase
-    .from('intervenciones')
-    .insert([{
-      content,
-      alias,
-      color_theme: color,
-      parent_id: parentId,
-      session_id: sessionId,
-      is_ai: isAi // Ahora acepta el valor que le pasemos
-    }]);
+    // Supabase parametriza estas variables automáticamente, bloqueando SQL Injection
+    const { error } = await supabase
+      .from('intervenciones')
+      .insert([{
+        content,
+        alias,
+        color_theme: color,
+        parent_id: parentId,
+        session_id: sessionId,
+        is_ai: isAi
+      }]);
 
-  if (error) {
-    console.error("❌ Fallo en la sinapsis:", error.message);
-  }
-};
+    if (error) {
+      console.error("❌ Fallo en la sinapsis:", error.message);
+    }
+  };
 
   return { messages, sendMessage, fetchMessagesBySession, subscribeToMessages };
 };

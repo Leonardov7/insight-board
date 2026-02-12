@@ -6,25 +6,43 @@ import {
   Loader2, Zap, UserCheck
 } from 'lucide-react';
 
-const AccessGuard = ({ children, isAdmin, session, user, setSession, onUserAssigned, sessionReady }) => {
-  // Estados para la navegación interna del login
+const AccessGuard = ({ children, isAdmin, session, user: userProp, setSession, onUserAssigned, sessionReady }) => {
   const [view, setView] = useState(isAdmin ? 'choice' : 'student_join');
   const [tema, setTema] = useState('');
   const [codigoBusqueda, setCodigoBusqueda] = useState('');
   const [savedSessions, setSavedSessions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState(userProp);
 
-  // Cargar historial solo para el administrador
+  // Cargar historial solo para el administrador con aislamiento de datos
   useEffect(() => {
-    if (isAdmin) {
-      supabase.from('sesiones').select('*').order('created_at', { ascending: false })
-        .then(({ data }) => setSavedSessions(data || []));
-    }
-  }, [isAdmin]);
+    const initAuthAndHistory = async () => {
+      let activeUser = currentUser;
 
-  // Función para que el docente cree un nuevo debate
+      // Si no hay usuario en props, lo recuperamos de la sesión activa
+      if (!activeUser) {
+        const { data: { user } } = await supabase.auth.getUser();
+        activeUser = user;
+        setCurrentUser(user);
+      }
+
+      if (isAdmin && activeUser) {
+        const { data, error } = await supabase
+          .from('sesiones')
+          .select('*')
+          .eq('owner_id', activeUser.id) // <--- AISLAMIENTO: Solo tus sesiones
+          .order('created_at', { ascending: false });
+
+        if (!error) setSavedSessions(data || []);
+      }
+    };
+
+    initAuthAndHistory();
+  }, [isAdmin, currentUser]);
+
   const handleCreate = async (e) => {
     e.preventDefault();
+    if (!currentUser) return;
     setLoading(true);
     const code = generateTechCode();
 
@@ -33,7 +51,8 @@ const AccessGuard = ({ children, isAdmin, session, user, setSession, onUserAssig
       .insert([{
         tema: tema,
         codigo: code,
-        status: 'waiting'
+        status: 'waiting',
+        owner_id: currentUser.id // <--- VINCULACIÓN: sesión amarrada al docente
       }])
       .select()
       .single();
@@ -50,8 +69,6 @@ const AccessGuard = ({ children, isAdmin, session, user, setSession, onUserAssig
     }
   };
 
-  // Función para que el estudiante se una mediante código
-  // Función para que el estudiante se una mediante código
   const handleJoin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -64,14 +81,13 @@ const AccessGuard = ({ children, isAdmin, session, user, setSession, onUserAssig
       .single();
 
     if (data) {
-      // El estudiante entra a la sesión independientemente de si está activa o no
       const storageKey = `alicia_identity_${data.codigo}`;
       const saved = localStorage.getItem(storageKey);
       const identity = saved ? JSON.parse(saved) : generateAlias();
 
       if (!saved) localStorage.setItem(storageKey, JSON.stringify(identity));
 
-      setSession(data); // <--- ESTO lo manda a la Sala de Espera si no está activa
+      setSession(data);
       onUserAssigned(identity);
     } else {
       alert("Código no válido");
@@ -79,14 +95,11 @@ const AccessGuard = ({ children, isAdmin, session, user, setSession, onUserAssig
     setLoading(false);
   };
 
-  // --- LÓGICA DE RENDERIZADO (SALA DE ESPERA VS TABLERO) ---
-  // --- SALA DE ESPERA (Se activa si el status no es 'active') ---
+  // --- LÓGICA DE SALA DE ESPERA ---
   if (sessionReady) {
     if (!isAdmin && session?.status !== 'active') {
       return (
         <div className="h-screen w-screen bg-[#0a0a0c] flex flex-col items-center justify-center p-6 text-center font-sans overflow-hidden relative">
-
-          {/* BOTÓN REGRESAR (En la esquina superior) */}
           <button
             onClick={() => { setSession(null); onUserAssigned(null); }}
             className="absolute top-10 left-10 p-3 bg-white/5 border border-white/10 rounded-2xl text-slate-500 hover:text-white hover:bg-white/10 transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest z-50"
@@ -102,58 +115,42 @@ const AccessGuard = ({ children, isAdmin, session, user, setSession, onUserAssig
             </div>
           </div>
 
-          <div className="space-y-2 z-10 animate-in fade-in zoom-in duration-700">
-            <h2 className="text-xl font-black uppercase tracking-[0.3em] text-white italic">
-              Sinapsis en Espera
-            </h2>
-            <div className="flex items-center justify-center gap-2 py-2 px-4 bg-white/5 border border-white/10 rounded-full mx-auto w-fit">
-              <UserCheck size={12} className="text-indigo-400" />
-              <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">
-                ID: <span className="text-indigo-400 font-mono">{user?.name}</span>
-              </p>
-            </div>
-
-            <div className="pt-8 max-w-xs mx-auto">
-              <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent mb-6" />
-              <p className="text-slate-500 text-[10px] leading-relaxed uppercase tracking-tighter font-bold italic">
-                "La red neuronal se está estabilizando. El docente iniciará la sesión en breve."
-              </p>
-            </div>
+          <div className="space-y-2 z-10">
+            <h2 className="text-xl font-black uppercase tracking-[0.3em] text-white italic">Sinapsis en Espera</h2>
+            <p className="text-slate-500 text-[10px] leading-relaxed uppercase tracking-tighter font-bold italic">
+              "La red neuronal se está estabilizando. El docente iniciará la sesión en breve."
+            </p>
           </div>
         </div>
       );
     }
-
-    return children; // Si está activa o eres admin, entras al tablero
+    return children;
   }
 
-  // --- FORMULARIOS DE ACCESO (VISTA INICIAL) ---
+  // --- VISTA INICIAL (LOGIN/ACCESO) ---
   return (
     <div className="h-screen w-screen bg-[#060608] flex items-center justify-center p-6 font-sans">
       <div className="w-full max-w-md bg-[#0e0e12] border border-white/10 rounded-[2.5rem] p-10 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500" />
-
         <div className="text-center mb-10">
           <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter">Insight Board</h2>
           <p className="text-indigo-400 text-[9px] font-black uppercase tracking-[0.3em] mt-2">Cognitive Interface v4.0</p>
         </div>
 
         {isAdmin && view === 'choice' && (
-          <div className="space-y-4 animate-in fade-in duration-500 text-left">
+          <div className="space-y-4 text-left">
             <button
               onClick={() => setView('create')}
-              className="w-full p-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-3xl flex items-center justify-between font-bold transition-all shadow-lg group"
+              className="w-full p-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-3xl flex items-center justify-between font-bold transition-all group"
             >
               <span className="flex items-center gap-3"><PlusCircle size={20} /> Nuevo Debate</span>
               <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
             </button>
-
             <div className="py-4 flex items-center gap-4">
               <div className="h-px bg-white/5 flex-1" />
               <span className="text-[10px] font-black text-slate-600 uppercase">Historial</span>
               <div className="h-px bg-white/5 flex-1" />
             </div>
-
             <div className="space-y-2 max-h-56 overflow-y-auto custom-scrollbar pr-2">
               {savedSessions.map(s => (
                 <button
@@ -173,7 +170,7 @@ const AccessGuard = ({ children, isAdmin, session, user, setSession, onUserAssig
         )}
 
         {(!isAdmin || view === 'create') && (
-          <form onSubmit={isAdmin ? handleCreate : handleJoin} className="space-y-4 animate-in slide-in-from-bottom-4 text-left">
+          <form onSubmit={isAdmin ? handleCreate : handleJoin} className="space-y-4 text-left">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-500 uppercase ml-2 tracking-widest">
                 {isAdmin ? "Tema del debate" : "Hash de Conexión"}
@@ -182,7 +179,6 @@ const AccessGuard = ({ children, isAdmin, session, user, setSession, onUserAssig
                 {isAdmin ? <Activity className="absolute left-5 top-5 text-indigo-500" size={20} /> : <Hash className="absolute left-5 top-5 text-indigo-500" size={20} />}
                 <input
                   required
-                  autoFocus
                   className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 pl-14 text-sm text-white outline-none focus:ring-1 ring-indigo-500 uppercase font-bold"
                   value={isAdmin ? tema : codigoBusqueda}
                   onChange={e => isAdmin ? setTema(e.target.value) : setCodigoBusqueda(e.target.value)}
