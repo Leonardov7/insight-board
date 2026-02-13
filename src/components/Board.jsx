@@ -1,19 +1,19 @@
 import React, { useCallback, useMemo, useEffect, useState } from 'react';
-import ReactFlow, { 
-  Background, 
-  Controls, 
-  useNodesState, 
+import ReactFlow, {
+  Background,
+  Controls,
+  useNodesState,
   useEdgesState,
   MarkerType
 } from 'reactflow';
-import 'reactflow/dist/style.css'; 
+import 'reactflow/dist/style.css';
 import SynapseNode from './SynapseNode';
 import { getLayoutedElements } from '../utils/layout';
 import { supabase } from '../lib/supabase';
 
 const nodeTypes = { synapse: SynapseNode };
 
-const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage}) => {
+const Board = ({ messages, isAdmin, userAlias, onReply, onEditMessage, onSoftDelete }) => {
   const [isolatedId, setIsolatedId] = useState(null);
 
   // Función para encontrar todos los descendientes de un nodo (hijos, nietos, etc.)
@@ -42,14 +42,16 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage}) => {
     let nodes = visibleMessages.map(msg => ({
       id: msg.id,
       type: 'synapse',
-      data: { 
-        msg, 
-        isAdminView: isAdmin, 
-        userAlias, 
-        onReply, 
+      data: {
+        msg,
+        isAdminView: isAdmin,
+        userAlias,
+        onReply,
+        onEdit: onEditMessage,   // <--- NUEVA
+        onDelete: onSoftDelete,  // <--- NUEVA (Ahora es el borrado lógico)
         onDelete: onDeleteMessage,
         isRoot: !msg.parent_id,
-        onIsolate: () => setIsolatedId(msg.id) 
+        onIsolate: () => setIsolatedId(msg.id)
       },
       position: { x: msg.x_pos || 0, y: msg.y_pos || 0 },
       // Marcamos si ya tiene posición para que el layout no lo toque
@@ -60,41 +62,41 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage}) => {
     const seed = visibleMessages.find(m => !m.parent_id);
 
     const edges = visibleMessages
-      .filter(msg => msg.id !== (isolatedId || seed?.id)) 
+      .filter(msg => msg.id !== (isolatedId || seed?.id))
       .map(msg => {
         const defaultParent = isolatedId || seed?.id;
-        const parentId = msg.parent_id || defaultParent; 
-        
+        const parentId = msg.parent_id || defaultParent;
+
         return {
           id: `e-${parentId}-${msg.id}`,
           source: parentId,
           target: msg.id,
           animated: true,
           type: 'default',
-          style: { 
-            stroke: msg.color_theme || '#6366f1', 
-            strokeWidth: 1.2, 
-            opacity: 0.8 
+          style: {
+            stroke: msg.color_theme || '#6366f1',
+            strokeWidth: 1.2,
+            opacity: 0.8
           },
-          markerEnd: { 
-            type: MarkerType.ArrowClosed, 
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
             color: msg.color_theme || '#6366f1',
-            width: 15, height: 15 
+            width: 15, height: 15
           },
         };
       });
 
     // Calculamos el layout automático solo para los que NO tienen posición manual
     const layouted = getLayoutedElements(nodes, edges, 'LR');
-    
+
     const finalNodes = layouted.nodes.map(node => {
       const msg = visibleMessages.find(m => m.id === node.id);
-      
+
       // PRIORIDAD CRÍTICA: Si el mensaje ya tiene posición en la DB, ignoramos el layout
       if (msg && msg.x_pos !== null && msg.x_pos !== undefined && msg.x_pos !== 0) {
-        return { 
-          ...node, 
-          position: { x: msg.x_pos, y: msg.y_pos } 
+        return {
+          ...node,
+          position: { x: msg.x_pos, y: msg.y_pos }
         };
       }
       return node;
@@ -121,12 +123,12 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage}) => {
   const onNodeDragStop = useCallback(async (event, node) => {
     if (!isAdmin) return;
     const { id, position } = node;
-    
+
     const { error } = await supabase
       .from('intervenciones')
-      .update({ 
-        x_pos: Math.round(position.x), 
-        y_pos: Math.round(position.y) 
+      .update({
+        x_pos: Math.round(position.x),
+        y_pos: Math.round(position.y)
       })
       .eq('id', id);
 
@@ -136,7 +138,7 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage}) => {
   return (
     <div className="w-full h-full bg-[#0a0a0c] relative">
       {isolatedId && (
-        <button 
+        <button
           onClick={() => setIsolatedId(null)}
           className="absolute top-6 left-1/2 -translate-x-1/2 z-50 px-6 py-2 bg-indigo-600/20 border border-indigo-500/50 text-indigo-400 text-[10px] font-black uppercase tracking-widest rounded-full hover:bg-indigo-500 hover:text-white transition-all backdrop-blur-md shadow-[0_0_20px_rgba(99,102,241,0.3)]"
         >

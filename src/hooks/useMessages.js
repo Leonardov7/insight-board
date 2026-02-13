@@ -19,7 +19,7 @@ export const useMessages = () => {
     }
   }, []);
 
-  // 2. Suscripción en Tiempo Real: AHORA ESCUCHA EL BORRADO
+  // 2. Suscripción en Tiempo Real: Maneja INSERT, UPDATE y DELETE
   const subscribeToMessages = useCallback((sessionId) => {
     if (!sessionId) return;
 
@@ -28,7 +28,7 @@ export const useMessages = () => {
       .on(
         'postgres_changes',
         {
-          event: '*', // Escucha INSERT, UPDATE y DELETE
+          event: '*', // Escucha todos los eventos
           schema: 'public',
           table: 'intervenciones',
           filter: `session_id=eq.${sessionId}`
@@ -42,8 +42,8 @@ export const useMessages = () => {
               prev.map((msg) => msg.id === payload.new.id ? payload.new : msg)
             );
           }
-          // --- NUEVA LÓGICA DE BORRADO EN TIEMPO REAL ---
           else if (payload.eventType === 'DELETE') {
+            // Se usa payload.old.id porque en DELETE el objeto 'new' viene vacío
             setMessages((prev) => 
               prev.filter((msg) => msg.id !== payload.old.id)
             );
@@ -57,7 +57,7 @@ export const useMessages = () => {
     };
   }, []);
 
-  // 3. Envío de mensajes: Mantiene todos los parámetros originales, incluyendo isAi
+  // 3. Envío de mensajes: Mantiene todos los parámetros originales
   const sendMessage = async (content, alias, color, parentId, sessionId, isAi = false) => {
     if (!sessionId) return;
 
@@ -77,14 +77,38 @@ export const useMessages = () => {
     }
   };
 
+  // 4. Actualización/Edición: Crucial para corregir o hacer borrado lógico sin romper el árbol
+  const updateMessage = async (messageId, newContent) => {
+    const { error } = await supabase
+      .from('intervenciones')
+      .update({ content: newContent })
+      .eq('id', messageId);
+
+    if (error) {
+      console.error("❌ Error al actualizar:", error.message);
+      throw error;
+    }
+  };
+
+  // 5. Borrado físico: Elimina el registro por completo
   const deleteMessage = async (messageId) => {
     const { error } = await supabase
       .from('intervenciones')
       .delete()
       .eq('id', messageId);
 
-    if (error) throw error;
+    if (error) {
+      console.error("❌ Error al borrar:", error.message);
+      throw error;
+    }
   };
 
-  return { messages, sendMessage, fetchMessagesBySession, subscribeToMessages, deleteMessage };
+  return { 
+    messages, 
+    sendMessage, 
+    fetchMessagesBySession, 
+    subscribeToMessages, 
+    updateMessage, // <--- Nueva función para editar/borrado lógico
+    deleteMessage 
+  };
 };

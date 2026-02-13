@@ -1,12 +1,10 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 // Mantenemos Zap para el Docente e incorporamos Trash2
-import { Shield, MessageSquareReply, Maximize2, Zap, Trash2 } from 'lucide-react';
-
+import { Shield, MessageSquareReply, Maximize2, Zap, Trash2, Pencil } from 'lucide-react';
 const SynapseNode = memo(({ data }) => {
     // Agregamos isAdminView a la extracción de datos sin tocar el resto
-    const { msg, userAlias, onReply, isRoot, onIsolate, onDelete, isAdminView } = data;
-
+    const { msg, userAlias, onReply, isRoot, onIsolate, onDelete, onEdit, isAdminView } = data;
     const isAi = msg.is_ai;
     const isDocente = msg.alias === "Docente" || msg.alias === "Administrador" || msg.alias === "Admin";
 
@@ -21,19 +19,33 @@ const SynapseNode = memo(({ data }) => {
                 style={{ backgroundColor: themeColor }}
             />
 
-            {/* BOTÓN DE BORRADO: Nueva adición exclusiva para el Administrador */}
+            {/* BOTÓN DE EDICIÓN: Nueva adición exclusiva para el Administrador */}
             {isAdminView && (
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        if (window.confirm("¿Eliminar este aporte de la red?")) {
+                <div className="absolute -top-3 -right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all z-[100]">
+                    {/* Botón Editar */}
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(msg.id, msg.content);
+                        }}
+                        className="p-1.5 bg-amber-500 text-white rounded-full hover:bg-amber-400 shadow-lg border border-white/10"
+                        title="Editar"
+                    >
+                        <Pencil size={10} />
+                    </button>
+
+                    {/* Botón Borrar (Lógico) */}
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
                             onDelete(msg.id);
-                        }
-                    }}
-                    className="absolute -top-2 -right-2 bg-rose-600 p-1.5 rounded-full text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 z-[100] shadow-lg border border-white/10"
-                >
-                    <Trash2 size={10} />
-                </button>
+                        }}
+                        className="p-1.5 bg-rose-600 text-white rounded-full hover:bg-rose-500 shadow-lg border border-white/10"
+                        title="Retirar comentario"
+                    >
+                        <Trash2 size={10} />
+                    </button>
+                </div>
             )}
 
             {/* Cuerpo del Orbe */}

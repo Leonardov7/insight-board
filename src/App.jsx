@@ -47,8 +47,7 @@ function App() {
   const [ranking, setRanking] = useState([]);
   const [replyingTo, setReplyingTo] = useState(null);
 
-  const { messages, sendMessage, fetchMessagesBySession, subscribeToMessages, deleteMessage } = useMessages();
-  const onlineUsers = usePresence(session?.id, user);
+  const { messages, sendMessage, fetchMessagesBySession, subscribeToMessages, updateMessage, deleteMessage } = useMessages(); const onlineUsers = usePresence(session?.id, user);
 
   // --- ESCUCHA DE AUTENTICACIÓN ---
   useEffect(() => {
@@ -142,6 +141,17 @@ function App() {
     setSession(null);
     setUser(null);
     setIsSidebarOpen(false);
+  };
+  const handleEditMessage = async (msgId, currentContent) => {
+    const newText = window.prompt("Editar comentario:", currentContent);
+    if (newText !== null && newText.trim() !== "") {
+      await updateMessage(msgId, newText);
+    }
+  };
+  const handleSoftDelete = async (msgId) => {
+    if (window.confirm("¿Retirar este comentario? La estructura se mantendrá pero el texto será borrado.")) {
+      await updateMessage(msgId, "🚫 Este aporte fue retirado por el docente.");
+    }
   };
 
   // --- LÓGICA DE NAVEGACIÓN ---
@@ -251,6 +261,8 @@ function App() {
               onReply={(msg, text) => setReplyingTo({ msg, quoteText: text })}
               sessionStatus={session?.status} // <-- Agregamos esta
               onDeleteMessage={deleteMessage}
+              onEditMessage={handleEditMessage} // <--- NUEVA
+              onSoftDelete={handleSoftDelete}   // <--- NUEVA
             />
           </main>
 
