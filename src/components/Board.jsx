@@ -48,19 +48,19 @@ const Board = ({ messages, isAdmin, userAlias, onReply }) => {
         userAlias, 
         onReply, 
         isRoot: !msg.parent_id,
-        onIsolate: () => setIsolatedId(msg.id) // Función para activar el aislamiento
+        onIsolate: () => setIsolatedId(msg.id) 
       },
       position: { x: msg.x_pos || 0, y: msg.y_pos || 0 },
-      hasManualPosition: msg.x_pos !== null && msg.x_pos !== undefined
+      // Marcamos si ya tiene posición para que el layout no lo toque
+      hasManualPosition: msg.x_pos !== null && msg.x_pos !== undefined && msg.x_pos !== 0
     }));
 
     // Creamos las conexiones
     const seed = visibleMessages.find(m => !m.parent_id);
 
     const edges = visibleMessages
-      .filter(msg => msg.id !== (isolatedId || seed?.id)) // No conectar el nodo raíz del modo actual
+      .filter(msg => msg.id !== (isolatedId || seed?.id)) 
       .map(msg => {
-        // Si estamos aislados, el padre por defecto es el nodo aislado. Si no, la semilla.
         const defaultParent = isolatedId || seed?.id;
         const parentId = msg.parent_id || defaultParent; 
         
@@ -72,7 +72,7 @@ const Board = ({ messages, isAdmin, userAlias, onReply }) => {
           type: 'default',
           style: { 
             stroke: msg.color_theme || '#6366f1', 
-            strokeWidth: 1.2, // Líneas más delgadas y elegantes
+            strokeWidth: 1.2, 
             opacity: 0.8 
           },
           markerEnd: { 
@@ -83,17 +83,17 @@ const Board = ({ messages, isAdmin, userAlias, onReply }) => {
         };
       });
 
-    // Calculamos el layout automático
+    // Calculamos el layout automático solo para los que NO tienen posición manual
     const layouted = getLayoutedElements(nodes, edges, 'LR');
     
     const finalNodes = layouted.nodes.map(node => {
-      const originalNode = nodes.find(n => n.id === node.id);
+      const msg = visibleMessages.find(m => m.id === node.id);
       
-      // Si el nodo ya tenía posición en la DB, ignoramos lo que diga el layout automático
-      if (originalNode && originalNode.hasManualPosition) {
+      // PRIORIDAD CRÍTICA: Si el mensaje ya tiene posición en la DB, ignoramos el layout
+      if (msg && msg.x_pos !== null && msg.x_pos !== undefined && msg.x_pos !== 0) {
         return { 
           ...node, 
-          position: originalNode.position 
+          position: { x: msg.x_pos, y: msg.y_pos } 
         };
       }
       return node;
@@ -105,8 +105,14 @@ const Board = ({ messages, isAdmin, userAlias, onReply }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
+  // EFECTO TULLADO: Evita el reseteo innecesario cuando solo cambian los paneles laterales
   useEffect(() => {
-    setNodes(initialNodes);
+    // Solo actualizamos si el número de mensajes cambió o si cambiamos de sesión
+    // Esto evita que al abrir el sidebar se dispare el setNodes
+    setNodes((nds) => {
+      const isCountDifferent = initialNodes.length !== nds.length;
+      return isCountDifferent ? initialNodes : nds;
+    });
     setEdges(initialEdges);
   }, [initialNodes, initialEdges, setNodes, setEdges]);
 
@@ -128,7 +134,6 @@ const Board = ({ messages, isAdmin, userAlias, onReply }) => {
 
   return (
     <div className="w-full h-full bg-[#0a0a0c] relative">
-      {/* BOTÓN DE REGRESO A GLOBAL */}
       {isolatedId && (
         <button 
           onClick={() => setIsolatedId(null)}
@@ -145,7 +150,7 @@ const Board = ({ messages, isAdmin, userAlias, onReply }) => {
         onEdgesChange={onEdgesChange}
         onNodeDragStop={onNodeDragStop}
         nodeTypes={nodeTypes}
-        fitView 
+        fitView={nodes.length > 0 && nodes.every(n => n.position.x === 0)} // Solo fitView si son nuevos
         fitViewOptions={{ padding: 0.2 }}
         minZoom={0.05}
         maxZoom={2}
