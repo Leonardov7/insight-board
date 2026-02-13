@@ -77,6 +77,7 @@ function App() {
           if (payload.new.status === 'active') {
             setSession(prev => ({ ...prev, status: 'active' }));
           }
+          fetchMessages();
         }
       )
       .subscribe();
