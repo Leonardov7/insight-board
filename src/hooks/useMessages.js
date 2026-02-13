@@ -19,7 +19,7 @@ export const useMessages = () => {
     }
   }, []);
 
-  // 2. Suscripción en Tiempo Real: Respeta el filtrado por canal de sesión
+  // 2. Suscripción en Tiempo Real: AHORA ESCUCHA EL BORRADO
   const subscribeToMessages = useCallback((sessionId) => {
     if (!sessionId) return;
 
@@ -28,7 +28,7 @@ export const useMessages = () => {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: '*', // Escucha INSERT, UPDATE y DELETE
           schema: 'public',
           table: 'intervenciones',
           filter: `session_id=eq.${sessionId}`
@@ -36,10 +36,16 @@ export const useMessages = () => {
         (payload) => {
           if (payload.eventType === 'INSERT') {
             setMessages((prev) => [...prev, payload.new]);
-          }
+          } 
           else if (payload.eventType === 'UPDATE') {
             setMessages((prev) =>
               prev.map((msg) => msg.id === payload.new.id ? payload.new : msg)
+            );
+          }
+          // --- NUEVA LÓGICA DE BORRADO EN TIEMPO REAL ---
+          else if (payload.eventType === 'DELETE') {
+            setMessages((prev) => 
+              prev.filter((msg) => msg.id !== payload.old.id)
             );
           }
         }
@@ -55,7 +61,6 @@ export const useMessages = () => {
   const sendMessage = async (content, alias, color, parentId, sessionId, isAi = false) => {
     if (!sessionId) return;
 
-    // Supabase parametriza estas variables automáticamente, bloqueando SQL Injection
     const { error } = await supabase
       .from('intervenciones')
       .insert([{
