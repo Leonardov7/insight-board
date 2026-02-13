@@ -25,8 +25,8 @@ const SynapseNode = memo(({ data }) => {
                     {/* Botón Editar */}
                     <button
                         onClick={(e) => {
-                            e.stopPropagation();
-                            onEdit(msg.id, msg.content);
+                            e.stopPropagation(); // Evita que React Flow mueva el nodo al hacer clic
+                            if (onEdit) onEdit(msg.id, msg.content);
                         }}
                         className="p-1.5 bg-amber-500 text-white rounded-full hover:bg-amber-400 shadow-lg border border-white/10"
                         title="Editar"
@@ -38,7 +38,7 @@ const SynapseNode = memo(({ data }) => {
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
-                            onDelete(msg.id);
+                            if (onDelete) onDelete(msg.id);
                         }}
                         className="p-1.5 bg-rose-600 text-white rounded-full hover:bg-rose-500 shadow-lg border border-white/10"
                         title="Retirar comentario"
