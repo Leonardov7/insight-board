@@ -50,7 +50,8 @@ const Board = ({ messages, isAdmin, userAlias, onReply }) => {
         isRoot: !msg.parent_id,
         onIsolate: () => setIsolatedId(msg.id) // Función para activar el aislamiento
       },
-      position: { x: msg.x_pos || 0, y: msg.y_pos || 0 }
+      position: { x: msg.x_pos || 0, y: msg.y_pos || 0 },
+      hasManualPosition: msg.x_pos !== null && msg.x_pos !== undefined
     }));
 
     // Creamos las conexiones
@@ -85,13 +86,14 @@ const Board = ({ messages, isAdmin, userAlias, onReply }) => {
     // Calculamos el layout automático
     const layouted = getLayoutedElements(nodes, edges, 'LR');
     
-    // PRIORIDAD: Si el mensaje ya tiene posición manual en la DB, la respetamos
     const finalNodes = layouted.nodes.map(node => {
-      const msg = visibleMessages.find(m => m.id === node.id);
-      if (msg && msg.x_pos !== null && msg.x_pos !== undefined) {
+      const originalNode = nodes.find(n => n.id === node.id);
+      
+      // Si el nodo ya tenía posición en la DB, ignoramos lo que diga el layout automático
+      if (originalNode && originalNode.hasManualPosition) {
         return { 
           ...node, 
-          position: { x: msg.x_pos, y: msg.y_pos } 
+          position: originalNode.position 
         };
       }
       return node;
