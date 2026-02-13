@@ -47,7 +47,7 @@ function App() {
   const [ranking, setRanking] = useState([]);
   const [replyingTo, setReplyingTo] = useState(null);
 
-  const { messages, sendMessage, fetchMessagesBySession, subscribeToMessages } = useMessages();
+  const { messages, sendMessage, fetchMessagesBySession, subscribeToMessages, deleteMessage } = useMessages();
   const onlineUsers = usePresence(session?.id, user);
 
   // --- ESCUCHA DE AUTENTICACIÓN ---
@@ -250,6 +250,7 @@ function App() {
               userAlias={user?.name}
               onReply={(msg, text) => setReplyingTo({ msg, quoteText: text })}
               sessionStatus={session?.status} // <-- Agregamos esta
+              onDeleteMessage={deleteMessage}
             />
           </main>
 

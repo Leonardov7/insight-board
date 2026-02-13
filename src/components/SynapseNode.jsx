@@ -1,10 +1,11 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
-// Mantenemos Zap para el Docente
-import { Shield, MessageSquareReply, Maximize2, Zap } from 'lucide-react';
+// Mantenemos Zap para el Docente e incorporamos Trash2
+import { Shield, MessageSquareReply, Maximize2, Zap, Trash2 } from 'lucide-react';
 
 const SynapseNode = memo(({ data }) => {
-    const { msg, userAlias, onReply, isRoot, onIsolate } = data;
+    // Agregamos isAdminView a la extracción de datos sin tocar el resto
+    const { msg, userAlias, onReply, isRoot, onIsolate, onDelete, isAdminView } = data;
 
     const isAi = msg.is_ai;
     const isDocente = msg.alias === "Docente" || msg.alias === "Administrador" || msg.alias === "Admin";
@@ -19,6 +20,21 @@ const SynapseNode = memo(({ data }) => {
                 className={`absolute -inset-1 blur-xl transition-opacity rounded-full opacity-20 group-hover:opacity-50`}
                 style={{ backgroundColor: themeColor }}
             />
+
+            {/* BOTÓN DE BORRADO: Nueva adición exclusiva para el Administrador */}
+            {isAdminView && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm("¿Eliminar este aporte de la red?")) {
+                            onDelete(msg.id);
+                        }
+                    }}
+                    className="absolute -top-2 -right-2 bg-rose-600 p-1.5 rounded-full text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 z-[100] shadow-lg border border-white/10"
+                >
+                    <Trash2 size={10} />
+                </button>
+            )}
 
             {/* Cuerpo del Orbe */}
             <div

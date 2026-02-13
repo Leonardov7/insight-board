@@ -13,7 +13,7 @@ import { supabase } from '../lib/supabase';
 
 const nodeTypes = { synapse: SynapseNode };
 
-const Board = ({ messages, isAdmin, userAlias, onReply }) => {
+const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage}) => {
   const [isolatedId, setIsolatedId] = useState(null);
 
   // Función para encontrar todos los descendientes de un nodo (hijos, nietos, etc.)
@@ -47,6 +47,7 @@ const Board = ({ messages, isAdmin, userAlias, onReply }) => {
         isAdminView: isAdmin, 
         userAlias, 
         onReply, 
+        onDelete: onDeleteMessage,
         isRoot: !msg.parent_id,
         onIsolate: () => setIsolatedId(msg.id) 
       },

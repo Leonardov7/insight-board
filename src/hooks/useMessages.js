@@ -7,7 +7,7 @@ export const useMessages = () => {
   // 1. Carga inicial: Mantiene el select('*') para no perder campos como 'is_ai' o 'color_theme'
   const fetchMessagesBySession = useCallback(async (sessionId) => {
     if (!sessionId) return;
-    
+
     const { data, error } = await supabase
       .from('intervenciones')
       .select('*')
@@ -27,18 +27,18 @@ export const useMessages = () => {
       .channel(`realtime_session_${sessionId}`)
       .on(
         'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
+        {
+          event: '*',
+          schema: 'public',
           table: 'intervenciones',
-          filter: `session_id=eq.${sessionId}` 
+          filter: `session_id=eq.${sessionId}`
         },
         (payload) => {
           if (payload.eventType === 'INSERT') {
             setMessages((prev) => [...prev, payload.new]);
-          } 
+          }
           else if (payload.eventType === 'UPDATE') {
-            setMessages((prev) => 
+            setMessages((prev) =>
               prev.map((msg) => msg.id === payload.new.id ? payload.new : msg)
             );
           }
@@ -72,5 +72,14 @@ export const useMessages = () => {
     }
   };
 
-  return { messages, sendMessage, fetchMessagesBySession, subscribeToMessages };
+  const deleteMessage = async (messageId) => {
+    const { error } = await supabase
+      .from('intervenciones')
+      .delete()
+      .eq('id', messageId);
+
+    if (error) throw error;
+  };
+
+  return { messages, sendMessage, fetchMessagesBySession, subscribeToMessages, deleteMessage };
 };
