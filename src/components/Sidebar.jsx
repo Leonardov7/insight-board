@@ -23,6 +23,19 @@ const Sidebar = ({
   const [loading, setLoading] = useState(false);
   const [isAiThinking, setIsAiThinking] = useState(false);
 
+  // Función auxiliar para formatear la fecha (Nueva adición)
+  const formatSessionDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }).format(date);
+  };
+
   // Función de cierre de sesión con salida forzada
   const handleSignOut = async () => {
     if (window.confirm("¿Deseas cerrar sesión y salir del tablero?")) {
@@ -115,7 +128,8 @@ const Sidebar = ({
                 <div className="max-h-[300px] overflow-y-auto pr-1 custom-scrollbar space-y-2">
                   {sessions.length === 0 ? <p className="text-[9px] text-slate-600 text-center py-4 font-bold italic uppercase">No hay registros previos</p> : sessions.map((s) => (
                     <div key={s.id} onClick={() => onSwitchSession(s)} className={`group relative p-3 rounded-xl border transition-all cursor-pointer ${s.id === currentSessionId ? 'bg-indigo-500/10 border-indigo-500/40' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}>
-                      <div className="flex flex-col gap-1 pr-14"><span className="text-[10px] font-bold text-slate-200 truncate uppercase">{s.tema || 'Sin tema'}</span><div className="flex items-center gap-2"><span className="text-[8px] font-mono text-indigo-400 font-bold">{s.codigo}</span><span className={`text-[7px] px-1.5 rounded-full border ${s.status === 'active' ? 'border-emerald-500/30 text-emerald-500' : 'border-slate-500/30 text-slate-500'} uppercase font-black`}>{s.status}</span></div></div>
+                      <div className="flex flex-col gap-1 pr-14"><span className="text-[10px] font-bold text-slate-200 truncate uppercase">{s.tema || 'Sin tema'}</span><div className="flex items-center gap-2"><span className="text-[8px] font-mono text-indigo-400 font-bold">{s.codigo}</span><span className={`text-[7px] px-1.5 rounded-full border ${s.status === 'active' ? 'border-emerald-500/30 text-emerald-500' : 'border-slate-500/30 text-slate-500'} uppercase font-black`}>{s.status}</span></div>
+                      <span className="text-[8px] text-slate-500 font-bold uppercase mt-1 tracking-tighter italic">{formatSessionDate(s.created_at)}</span></div>
                       <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={(e) => handleToggleStatus(e, s.id, s.status)} className={`p-1.5 border rounded-lg transition-all ${s.status === 'active' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-white/5 text-slate-500 border-white/10'}`}><Activity size={10} className={s.status === 'active' ? 'animate-pulse' : ''} /></button>
                         <button onClick={(e) => { e.stopPropagation(); onSwitchSession(s); }} className="p-1.5 bg-indigo-500/20 text-indigo-400 rounded-lg hover:bg-indigo-500 transition-all"><ExternalLink size={10} /></button>
