@@ -13,6 +13,7 @@ const STUDENT_COLOR_PALETTE = [
 
 const Sidebar = ({ 
   isOpen, onClose, isAdmin, currentSessionId, 
+  currentSessionStatus,
   onSwitchSession, onNewDebate, 
   messages, sendMessage,
   setIsAnalyticsOpen 
@@ -98,7 +99,7 @@ const Sidebar = ({
 
   useEffect(() => {
     if (isAdmin) fetchSessions();
-  }, [isAdmin]);
+  }, [isAdmin,currentSessionStatus]);
 
   return (
     <div className={`fixed top-[70px] bottom-0 right-0 w-80 bg-[#0e0e12]/95 backdrop-blur-2xl border-l border-white/10 z-50 shadow-2xl flex flex-col transition-transform duration-500 ease-in-out font-sans ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>

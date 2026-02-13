@@ -274,6 +274,7 @@ function App() {
           onClose={() => setIsSidebarOpen(false)}
           isAdmin={isAdmin}
           currentSessionId={session?.id}
+          currentSessionStatus={session?.status} // <--- ESTA ES LA LÍNEA NUEVA
           onSwitchSession={handleSwitchSession}
           onNewDebate={handleNewDebate}
           messages={messages}
