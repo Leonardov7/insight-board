@@ -1,19 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { generateTechCode, generateAlias } from '../utils/aliases';
+import { generateTechCode } from '../utils/aliases';
 import {
   PlusCircle, Hash, ChevronRight, Activity,
-  Loader2, Zap, UserCheck, LogOut
+  Loader2, Zap, UserCheck, LogOut, User
 } from 'lucide-react';
+
+const STUDENT_COLOR_PALETTE = [
+  "#34d399", "#38bdf8", "#fb7185", "#fbbf24", "#a78bfa", "#22d3ee", "#f472b6",
+];
 
 const AccessGuard = ({ children, isAdmin, session, user: userProp, setSession, onUserAssigned, sessionReady }) => {
   // Estados para la navegación interna del login
   const [view, setView] = useState(isAdmin ? 'choice' : 'student_join');
   const [tema, setTema] = useState('');
   const [codigoBusqueda, setCodigoBusqueda] = useState('');
+  const [studentName, setStudentName] = useState(''); // Nuevo: para el alias manual
   const [savedSessions, setSavedSessions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(''); // Nuevo: para errores de validación
   const [currentUser, setCurrentUser] = useState(userProp);
+  const [tempSession, setTempSession] = useState(null); // Para guardar la sesión encontrada antes de pedir el nombre
 
   // Función para extraer la identidad real del administrador desde Google
   const getAdminIdentity = (u) => {
@@ -37,7 +44,7 @@ const AccessGuard = ({ children, isAdmin, session, user: userProp, setSession, o
       if (isAdmin && activeUser) {
         supabase.from('sesiones')
           .select('*')
-          .eq('owner_id', activeUser.id) // <--- AISLAMIENTO DE SEGURIDAD
+          .eq('owner_id', activeUser.id)
           .order('created_at', { ascending: false })
           .then(({ data }) => setSavedSessions(data || []));
       }
@@ -58,7 +65,7 @@ const AccessGuard = ({ children, isAdmin, session, user: userProp, setSession, o
         tema: tema,
         codigo: code,
         status: 'waiting',
-        owner_id: currentUser.id // <--- VINCULACIÓN CON EL USUARIO
+        owner_id: currentUser.id
       }])
       .select()
       .single();
@@ -71,15 +78,16 @@ const AccessGuard = ({ children, isAdmin, session, user: userProp, setSession, o
 
     if (data) {
       setSession(data);
-      onUserAssigned(getAdminIdentity(currentUser)); // <--- USA NOMBRE DINÁMICO
+      onUserAssigned(getAdminIdentity(currentUser));
     }
     setLoading(false);
   };
 
-  // Función para que el estudiante se una mediante código
-  const handleJoin = async (e) => {
+  // Fase 1 Estudiante: Buscar la sesión por código
+  const handleJoinSearch = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     const code = codigoBusqueda.toUpperCase();
 
     const { data, error } = await supabase
@@ -89,21 +97,50 @@ const AccessGuard = ({ children, isAdmin, session, user: userProp, setSession, o
       .single();
 
     if (data) {
-      const storageKey = `alicia_identity_${data.codigo}`;
-      const saved = localStorage.getItem(storageKey);
-      const identity = saved ? JSON.parse(saved) : generateAlias();
-
-      if (!saved) localStorage.setItem(storageKey, JSON.stringify(identity));
-
-      setSession(data);
-      onUserAssigned(identity);
+      setTempSession(data);
+      setView('student_name'); // Pasamos a la fase de elegir nombre
     } else {
-      alert("Código no válido");
+      setError("Código no válido");
     }
     setLoading(false);
   };
 
-  // Salida forzada para evitar errores de red/CORS
+  // Fase 2 Estudiante: Validar nombre y entrar
+  const handleFinalJoin = async (e) => {
+    e.preventDefault();
+    if (!studentName.trim()) return setError("Ingresa un nombre");
+    setLoading(true);
+    setError('');
+
+    // VALIDACIÓN: ¿Ya existe este nombre en esta sesión?
+    const { data: existing } = await supabase
+      .from('intervenciones')
+      .select('alias')
+      .eq('session_id', tempSession.id)
+      .ilike('alias', studentName.trim())
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      setError(`El nombre "${studentName}" ya está en uso en esta sesión.`);
+      setLoading(false);
+      return;
+    }
+
+    const identity = {
+      name: studentName.trim(),
+      color: STUDENT_COLOR_PALETTE[Math.floor(Math.random() * STUDENT_COLOR_PALETTE.length)],
+      isAdmin: false
+    };
+
+    // Guardamos en local para persistencia
+    localStorage.setItem(`alicia_identity_${tempSession.codigo}`, JSON.stringify(identity));
+    
+    setSession(tempSession);
+    onUserAssigned(identity);
+    setLoading(false);
+  };
+
+  // Salida forzada
   const handleForceExit = async () => {
     if (window.confirm("¿Deseas cerrar la sesión administrativa?")) {
       try { await supabase.auth.signOut(); } catch (e) {}
@@ -118,7 +155,7 @@ const AccessGuard = ({ children, isAdmin, session, user: userProp, setSession, o
       return (
         <div className="h-screen w-screen bg-[#0a0a0c] flex flex-col items-center justify-center p-6 text-center font-sans overflow-hidden relative">
           <button
-            onClick={() => { setSession(null); onUserAssigned(null); }}
+            onClick={() => { setSession(null); onUserAssigned(null); setView('student_join'); }}
             className="absolute top-10 left-10 p-3 bg-white/5 border border-white/10 rounded-2xl text-slate-500 hover:text-white hover:bg-white/10 transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest z-50"
           >
             <ChevronRight size={14} className="rotate-180" /> Regresar
@@ -151,28 +188,23 @@ const AccessGuard = ({ children, isAdmin, session, user: userProp, setSession, o
     return children;
   }
 
-  // --- FORMULARIOS DE ACCESO (VISTA INICIAL) ---
   return (
     <div className="h-screen w-screen bg-[#060608] flex items-center justify-center p-6 font-sans">
       <div className="w-full max-w-md bg-[#0e0e12] border border-white/10 rounded-[2.5rem] p-10 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500" />
+        
         <div className="text-center mb-10">
           <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter">Insight Board</h2>
           <p className="text-indigo-400 text-[9px] font-black uppercase tracking-[0.3em] mt-2">Cognitive Interface v4.0</p>
         </div>
 
+        {/* VISTA: ELECCIÓN ADMIN */}
         {isAdmin && view === 'choice' && (
-          <div className="space-y-4 animate-in fade-in duration-500 text-left">
-            <button
-              onClick={handleForceExit}
-              className="text-[9px] text-slate-600 hover:text-rose-400 uppercase font-black flex items-center gap-2 mb-2 transition-all"
-            >
+          <div className="space-y-4 animate-in fade-in duration-500">
+            <button onClick={handleForceExit} className="text-[9px] text-slate-600 hover:text-rose-400 uppercase font-black flex items-center gap-2 mb-2 transition-all">
               <LogOut size={12} /> Cerrar Sesión / Salir
             </button>
-            <button
-              onClick={() => setView('create')}
-              className="w-full p-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-3xl flex items-center justify-between font-bold transition-all shadow-lg group"
-            >
+            <button onClick={() => setView('create')} className="w-full p-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-3xl flex items-center justify-between font-bold transition-all shadow-lg group">
               <span className="flex items-center gap-3"><PlusCircle size={20} /> Nuevo Debate</span>
               <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
             </button>
@@ -183,14 +215,7 @@ const AccessGuard = ({ children, isAdmin, session, user: userProp, setSession, o
             </div>
             <div className="space-y-2 max-h-56 overflow-y-auto custom-scrollbar pr-2">
               {savedSessions.map(s => (
-                <button
-                  key={s.id}
-                  onClick={() => {
-                    setSession(s);
-                    onUserAssigned(getAdminIdentity(currentUser));
-                  }}
-                  className="w-full p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all text-left"
-                >
+                <button key={s.id} onClick={() => { setSession(s); onUserAssigned(getAdminIdentity(currentUser)); }} className="w-full p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all text-left">
                   <p className="text-xs font-bold text-slate-300 uppercase truncate">{s.tema}</p>
                   <p className="text-[9px] text-indigo-500 font-mono mt-1 uppercase">{s.codigo} — {s.status}</p>
                 </button>
@@ -199,13 +224,10 @@ const AccessGuard = ({ children, isAdmin, session, user: userProp, setSession, o
           </div>
         )}
 
-        {(!isAdmin || view === 'create') && (
-          <form onSubmit={isAdmin ? handleCreate : handleJoin} className="space-y-4 animate-in slide-in-from-bottom-4 text-left">
-            <button
-              type="button"
-              onClick={() => isAdmin ? setView('choice') : handleForceExit()}
-              className="text-[9px] text-slate-600 hover:text-white uppercase font-black flex items-center gap-1 mb-4 transition-all"
-            >
+        {/* VISTA: CREAR DEBATE O UNIRSE (Fase 1 Código) */}
+        {(view === 'create' || view === 'student_join') && (
+          <form onSubmit={isAdmin ? handleCreate : handleJoinSearch} className="space-y-4 animate-in slide-in-from-bottom-4">
+            <button type="button" onClick={() => isAdmin ? setView('choice') : handleForceExit()} className="text-[9px] text-slate-600 hover:text-white uppercase font-black flex items-center gap-1 mb-4 transition-all">
               <ChevronRight size={12} className="rotate-180" /> Regresar
             </button>
             <div className="space-y-2">
@@ -214,24 +236,38 @@ const AccessGuard = ({ children, isAdmin, session, user: userProp, setSession, o
               </label>
               <div className="relative">
                 {isAdmin ? <Activity className="absolute left-5 top-5 text-indigo-500" size={20} /> : <Hash className="absolute left-5 top-5 text-indigo-500" size={20} />}
-                <input
-                  required
-                  autoFocus
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 pl-14 text-sm text-white outline-none focus:ring-1 ring-indigo-500 uppercase font-bold"
-                  value={isAdmin ? tema : codigoBusqueda}
-                  onChange={e => isAdmin ? setTema(e.target.value) : setCodigoBusqueda(e.target.value)}
-                />
+                <input required autoFocus className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 pl-14 text-sm text-white outline-none focus:ring-1 ring-indigo-500 uppercase font-bold" 
+                       value={isAdmin ? tema : codigoBusqueda} onChange={e => isAdmin ? setTema(e.target.value) : setCodigoBusqueda(e.target.value)} />
               </div>
             </div>
-            <button
-              disabled={loading}
-              type="submit"
-              className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-lg hover:bg-indigo-500 transition-all flex justify-center items-center"
-            >
+            {error && <p className="text-rose-500 text-[10px] font-bold uppercase px-2">{error}</p>}
+            <button disabled={loading} type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-lg hover:bg-indigo-500 transition-all flex justify-center items-center">
               {loading ? <Loader2 className="animate-spin" size={18} /> : (isAdmin ? "Desplegar Tablero" : "Establecer Vínculo")}
             </button>
           </form>
         )}
+
+        {/* VISTA: ELEGIR NOMBRE (Fase 2 Estudiante) */}
+        {view === 'student_name' && (
+          <form onSubmit={handleFinalJoin} className="space-y-4 animate-in slide-in-from-right-4">
+            <button type="button" onClick={() => setView('student_join')} className="text-[9px] text-slate-600 hover:text-white uppercase font-black flex items-center gap-1 mb-4 transition-all">
+              <ChevronRight size={12} className="rotate-180" /> Cambiar Código
+            </button>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase ml-2 tracking-widest">Identidad en la Red</label>
+              <div className="relative">
+                <User className="absolute left-5 top-5 text-indigo-500" size={20} />
+                <input required autoFocus placeholder="TU NOMBRE O ALIAS..." className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 pl-14 text-sm text-white outline-none focus:ring-1 ring-indigo-500 uppercase font-bold" 
+                       value={studentName} onChange={e => {setStudentName(e.target.value); setError('');}} />
+              </div>
+            </div>
+            {error && <p className="text-rose-500 text-[10px] font-bold uppercase px-2 animate-pulse">⚠️ {error}</p>}
+            <button disabled={loading} type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-lg hover:bg-indigo-500 transition-all flex justify-center items-center">
+              {loading ? <Loader2 className="animate-spin" size={18} /> : "Ingresar a la Sinapsis"}
+            </button>
+          </form>
+        )}
+
       </div>
     </div>
   );
