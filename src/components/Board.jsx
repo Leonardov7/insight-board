@@ -13,7 +13,7 @@ import { supabase } from '../lib/supabase';
 
 const nodeTypes = { synapse: SynapseNode };
 
-const Board = ({ messages, isAdmin, userAlias, onReply, onEditMessage, onSoftDelete }) => {
+const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditMessage }) => {
   const [isolatedId, setIsolatedId] = useState(null);
 
   // Función para encontrar todos los descendientes de un nodo (hijos, nietos, etc.)
@@ -29,7 +29,6 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onEditMessage, onSoftDel
   // 1. Procesamiento de Nodos y Edges
   const { initialNodes, initialEdges } = useMemo(() => {
     if (!messages || messages.length === 0) return { initialNodes: [], initialEdges: [] };
-
     // --- LÓGICA DE AISLAMIENTO ---
     let visibleMessages = messages;
     if (isolatedId) {
@@ -47,14 +46,12 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onEditMessage, onSoftDel
         isAdminView: isAdmin,
         userAlias,
         onReply,
-        onEdit: onEditMessage,   // <--- NUEVA
-        onDelete: onSoftDelete,  // <--- NUEVA (Ahora es el borrado lógico)
-        onDelete: onDeleteMessage,
+        onDelete: onDeleteMessage, // Ahora sí reconocerá qué es esto
+        onEdit: onEditMessage,     // Agregado para la edición
         isRoot: !msg.parent_id,
         onIsolate: () => setIsolatedId(msg.id)
       },
       position: { x: msg.x_pos || 0, y: msg.y_pos || 0 },
-      // Marcamos si ya tiene posición para que el layout no lo toque
       hasManualPosition: msg.x_pos !== null && msg.x_pos !== undefined && msg.x_pos !== 0
     }));
 
@@ -103,7 +100,7 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onEditMessage, onSoftDel
     });
 
     return { initialNodes: finalNodes, initialEdges: layouted.edges };
-  }, [messages, isAdmin, userAlias, onReply, isolatedId, getDescendants]);
+  }, [messages, isAdmin, userAlias, onReply, isolatedId, getDescendants, onDeleteMessage, onEditMessage]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);

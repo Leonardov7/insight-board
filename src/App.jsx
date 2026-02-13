@@ -261,7 +261,7 @@ function App() {
               onReply={(msg, text) => setReplyingTo({ msg, quoteText: text })}
               sessionStatus={session?.status} // <-- Agregamos esta
               onDeleteMessage={deleteMessage}
-              onEditMessage={handleEditMessage} // <--- NUEVA
+              onEditMessage={updateMessage} // <--- NUEVA
               onSoftDelete={handleSoftDelete}   // <--- NUEVA
             />
           </main>
