@@ -182,10 +182,13 @@ function App() {
       </div>
     );
   }
-  // CAMBIO: Ahora el status debe ser 'active' para que aparezca el InputArea
-  const hasSeed = messages.length > 0;
-  const canPost = session?.status === 'active'; // Se bloquea para todos, incluido Admin
+  // --- LÓGICA DE BLOQUEO RESTAURADA ---
+  // 1. Verificamos si ya existe el mensaje raíz (semilla) del docente
+  const hasSeed = messages.some(m => !m.parent_id);
 
+  // 2. El docente siempre puede publicar (para crear la semilla o intervenir)
+  // 3. El estudiante solo puede si: la sesión está ACTIVA Y ya existe la semilla
+  const canPost = isAdmin || (session?.status === 'active' && hasSeed);
   return (
     <AccessGuard
       isAdmin={isAdmin} session={session} user={user}
@@ -256,12 +259,11 @@ function App() {
                 <InputArea onSend={handleSend} replyingTo={replyingTo} onCancelReply={() => setReplyingTo(null)} />
               ) : (
                 <div className="py-4 px-8 bg-indigo-500/5 border border-indigo-500/10 rounded-[1.5rem] flex items-center justify-center gap-4">
-                  {/* Cambiamos el color del icono si está inactivo */}
-                  <Activity size={18} className={session?.status === 'inactive' ? "text-rose-500 animate-pulse" : "text-indigo-500 animate-pulse"} />
+                  <Activity size={18} className={!hasSeed ? "text-indigo-500 animate-pulse" : "text-rose-500 animate-pulse"} />
                   <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest italic">
-                    {session?.status === 'inactive'
-                      ? "Esta red se encuentra desactivada. Debes esperar a que el profesor la active."
-                      : "Esperando inicio del docente..."}
+                    {!hasSeed
+                      ? "Esperando a que el docente plantee el tema de apertura..."
+                      : "La red ha sido pausada por el docente."}
                   </p>
                 </div>
               )}
