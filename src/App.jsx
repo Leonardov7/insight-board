@@ -18,8 +18,8 @@ const LoginView = () => (
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
       <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">Bienvenido</h2>
       <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-10">Gestiona tu Red Sináptica Profesional</p>
-      
-      <button 
+
+      <button
         onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })}
         className="w-full py-4 bg-white text-black rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all flex items-center justify-center gap-3 shadow-lg"
       >
@@ -32,11 +32,11 @@ const LoginView = () => (
 
 function App() {
   const queryParams = new URLSearchParams(window.location.search);
-  
+
   // --- NUEVOS ESTADOS DE IDENTIDAD ---
   const [sessionAuth, setSessionAuth] = useState(null);
   const [appView, setAppView] = useState('launcher'); // 'launcher' | 'insight-board'
-  
+
   // Mantenemos el soporte para el parámetro admin o lo vinculamos al login
   const isAdmin = queryParams.get('admin') === 'true' || !!sessionAuth;
 
@@ -74,10 +74,13 @@ function App() {
       .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'sesiones', filter: `id=eq.${session.id}` },
         (payload) => {
-          if (payload.new.status === 'active') {
-            setSession(prev => ({ ...prev, status: 'active' }));
+          // CAMBIO: Ahora aceptamos cualquier status que venga de la DB (active o inactive)
+          setSession(prev => ({ ...prev, status: payload.new.status }));
+
+          // Si tienes fetchMessagesBySession definido, úsalo aquí para refrescar
+          if (typeof fetchMessagesBySession === 'function') {
+            fetchMessagesBySession(session.id);
           }
-          fetchMessages();
         }
       )
       .subscribe();
@@ -151,9 +154,9 @@ function App() {
           <h2 className="text-white font-black uppercase tracking-[0.4em] text-[10px] mb-2 opacity-40">Ecosistema Cognitivo</h2>
           <h1 className="text-3xl font-black text-white uppercase italic tracking-tighter">Mis Aplicaciones</h1>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
-          <button 
+          <button
             onClick={() => setAppView('insight-board')}
             className="p-12 bg-indigo-600/5 border border-indigo-500/20 rounded-[3rem] hover:bg-indigo-600/10 hover:border-indigo-500/50 transition-all group relative overflow-hidden"
           >
@@ -162,7 +165,7 @@ function App() {
             <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Insight Board</h3>
             <p className="text-[10px] text-slate-500 uppercase font-bold mt-3 tracking-widest">Red de Sinapsis en Vivo</p>
           </button>
-          
+
           <div className="p-12 bg-white/[0.02] border border-white/5 rounded-[3rem] opacity-30 grayscale cursor-not-allowed">
             <Database className="text-slate-500 mb-6" size={48} />
             <h3 className="text-slate-500 font-black uppercase italic tracking-tighter text-xl">Dendron LMS</h3>
@@ -170,7 +173,7 @@ function App() {
           </div>
         </div>
 
-        <button 
+        <button
           onClick={() => supabase.auth.signOut()}
           className="mt-20 flex items-center gap-2 text-slate-600 hover:text-rose-500 transition-colors text-[10px] font-black uppercase tracking-widest"
         >
@@ -179,9 +182,9 @@ function App() {
       </div>
     );
   }
-
+  // CAMBIO: Ahora el status debe ser 'active' para que aparezca el InputArea
   const hasSeed = messages.length > 0;
-  const canPost = isAdmin || hasSeed;
+  const canPost = session?.status === 'active'; // Se bloquea para todos, incluido Admin
 
   return (
     <AccessGuard
@@ -190,7 +193,7 @@ function App() {
       sessionReady={!!session && !!user}
     >
       <div className="h-screen w-screen bg-[#0a0a0c] text-slate-100 flex flex-col overflow-hidden font-sans">
-        
+
         {/* HEADER PRINCIPAL */}
         <header className={`h-16 border-b flex justify-between items-center px-8 z-50 backdrop-blur-xl ${isAdmin ? 'bg-indigo-950/20 border-indigo-500/30' : 'bg-[#0e0e12]/80 border-white/5'}`}>
           <div className="flex items-center gap-8">
@@ -198,7 +201,7 @@ function App() {
               <span className="text-[8px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-0.5">Red de Sinapsis</span>
               <h1 className="text-xs font-bold uppercase truncate max-w-[200px] tracking-tight">{session?.tema}</h1>
             </button>
-            
+
             <div className="bg-indigo-600/10 border border-indigo-500/20 px-4 py-1.5 rounded-xl flex items-center gap-3">
               <Hash size={14} className="text-indigo-400" />
               <span className="text-sm font-black text-white font-mono tracking-tighter">{session?.codigo}</span>
@@ -228,21 +231,22 @@ function App() {
 
         {/* CONTENEDOR CENTRAL */}
         <div className="flex-1 relative flex flex-col overflow-hidden">
-          
+
           {session && (
-            <TopStatusHub 
-              connectedUsers={onlineUsers} 
-              ranking={ranking} 
-              sessionStatus={session.status} 
+            <TopStatusHub
+              connectedUsers={onlineUsers}
+              ranking={ranking}
+              sessionStatus={session.status}
             />
           )}
 
           <main className="flex-1 relative bg-[#070709] z-10">
-            <Board 
-              messages={messages} 
-              isAdmin={isAdmin} 
-              userAlias={user?.name} 
-              onReply={(msg, text) => setReplyingTo({ msg, quoteText: text })} 
+            <Board
+              messages={messages}
+              isAdmin={isAdmin}
+              userAlias={user?.name}
+              onReply={(msg, text) => setReplyingTo({ msg, quoteText: text })}
+              sessionStatus={session?.status} // <-- Agregamos esta
             />
           </main>
 
@@ -252,8 +256,13 @@ function App() {
                 <InputArea onSend={handleSend} replyingTo={replyingTo} onCancelReply={() => setReplyingTo(null)} />
               ) : (
                 <div className="py-4 px-8 bg-indigo-500/5 border border-indigo-500/10 rounded-[1.5rem] flex items-center justify-center gap-4">
-                  <Activity size={18} className="text-indigo-500 animate-pulse" />
-                  <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest italic">Esperando inicio del docente...</p>
+                  {/* Cambiamos el color del icono si está inactivo */}
+                  <Activity size={18} className={session?.status === 'inactive' ? "text-rose-500 animate-pulse" : "text-indigo-500 animate-pulse"} />
+                  <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest italic">
+                    {session?.status === 'inactive'
+                      ? "Esta red se encuentra desactivada. Debes esperar a que el profesor la active."
+                      : "Esperando inicio del docente..."}
+                  </p>
                 </div>
               )}
             </div>
