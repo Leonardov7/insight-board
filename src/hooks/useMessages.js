@@ -113,6 +113,7 @@ export const useMessages = () => {
   return {
     messages,
     sendMessage,
+    setMessages,
     fetchMessagesBySession,
     subscribeToMessages,
     updateMessage,

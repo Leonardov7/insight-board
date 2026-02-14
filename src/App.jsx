@@ -47,7 +47,15 @@ function App() {
   const [ranking, setRanking] = useState([]);
   const [replyingTo, setReplyingTo] = useState(null);
 
-  const { messages, sendMessage, fetchMessagesBySession, subscribeToMessages, updateMessage, deleteMessage } = useMessages();
+  const {
+    messages,
+    setMessages, // <--- AHORA SÍ DEFINIDO
+    sendMessage,
+    fetchMessagesBySession,
+    subscribeToMessages,
+    updateMessage,
+    deleteMessage
+  } = useMessages();
   const onlineUsers = usePresence(session?.id, user);
 
   // --- ESCUCHA DE AUTENTICACIÓN ---
@@ -144,29 +152,31 @@ function App() {
     setIsSidebarOpen(false);
   };
   const handleEditMessage = async (msgId, currentContent) => {
-    console.group(`🧠 Reconfiguración Neuronal: ${msgId}`);
-    const newText = window.prompt("RECONFIGURAR NÚCLEO COGNITIVO:", currentContent);
+  console.group(`🧠 Reconfiguración Neuronal: ${msgId}`);
+  const newText = window.prompt("RECONFIGURAR NÚCLEO COGNITIVO:", currentContent);
+  
+  if (newText !== null && newText.trim() !== "" && newText !== currentContent) {
+    // GUARDAMOS ESTADO PREVIO POR SI HAY QUE REVERTIR
+    const originalMessages = [...messages];
 
-    if (newText !== null && newText.trim() !== "" && newText !== currentContent) {
-      // 1. ACTUALIZACIÓN OPTIMISTA: Cambiamos el texto en pantalla YA MISMO
-      const oldMessages = [...messages];
+    try {
+      console.log("🛰️ Transmitiendo pulso a la base de datos...");
+      
+      // 1. ACTUALIZACIÓN OPTIMISTA (Visión inmediata)
       setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: newText.trim() } : m));
 
-      try {
-        console.log("🛰️ Transmitiendo pulso a la base de datos...");
-        const result = await updateMessage(msgId, newText.trim());
-
-        // Si llegamos aquí, Supabase confirmó la recepción
-        console.log("✅ Sinapsis confirmada por el servidor.");
-      } catch (e) {
-        console.error("🚨 Error en la transmisión. Revirtiendo cambios.");
-        // Si falla, devolvemos los mensajes a su estado original
-        setMessages(oldMessages);
-        alert("La red rechazó el cambio. Revisa los permisos en Supabase.");
-      }
+      // 2. ACTUALIZACIÓN REAL EN DB
+      await updateMessage(msgId, newText.trim());
+      
+      console.log("✅ Pulso confirmado por el servidor.");
+    } catch (e) {
+      console.error("🚨 Error en la transmisión. Restaurando topología original.");
+      setMessages(originalMessages);
+      alert("La red rechazó el cambio. Verifica permisos RLS.");
     }
-    console.groupEnd();
-  };
+  }
+  console.groupEnd();
+};
 
 
   const handleSmartDelete = async (msgId) => {
