@@ -1,66 +1,60 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
-// Mantenemos Zap para el Docente e incorporamos Trash2
 import { Shield, MessageSquareReply, Maximize2, Zap, Trash2, Pencil } from 'lucide-react';
 
 const SynapseNode = memo(({ data }) => {
-    // Agregamos isAdminView a la extracción de datos sin tocar el resto
-    const { msg, userAlias, onReply, isRoot, onIsolate, onDelete, onEdit, isAdminView } = data;
+    const { msg, onReply, isRoot, onIsolate, onDelete, onEdit, isAdminView } = data;
     const isAi = msg.is_ai;
     const isDocente = msg.alias === "Docente" || msg.alias === "Administrador" || msg.alias === "Admin";
 
-    // Eliminamos el forzado de color para la IA para que use su color de "estudiante"
+    // 1. LÓGICA DE DETECCIÓN DE INHIBICIÓN
+    const isInhibited = msg.content.includes("🚫 [NÚCLEO NEUTRALIZADO]") || msg.content.includes("Sinapsis Inhibida");
     const themeColor = msg.color_theme || '#6366f1';
 
     return (
         <div className="relative group transition-all duration-300">
-            {/* Resplandor Neón: Normal para todos, ligeramente más opaco para el Docente */}
+            
+            {/* 2. RESPLANDOR NEÓN: Se apaga totalmente si la neurona está inhibida */}
             <div
-                className={`absolute -inset-1 blur-xl transition-opacity rounded-full opacity-20 group-hover:opacity-50`}
+                className={`absolute -inset-1 blur-xl transition-opacity rounded-full 
+                ${isInhibited ? 'opacity-0' : 'opacity-20 group-hover:opacity-50'}`} 
                 style={{ backgroundColor: themeColor }}
             />
 
-            {/* BOTÓN DE EDICIÓN: Nueva adición exclusiva para el Administrador */}
+            {/* CONTROLES DE ADMINISTRADOR */}
             {isAdminView && (
                 <div className="absolute -top-3 -right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all z-[100]">
-                    {/* Botón Editar */}
                     <button
-                        onClick={(e) => {
-                            e.stopPropagation(); // Evita que React Flow mueva el nodo al hacer clic
-                            if (onEdit) onEdit(msg.id, msg.content);
-                        }}
+                        onClick={(e) => { e.stopPropagation(); if (onEdit) onEdit(msg.id, msg.content); }}
                         className="p-1.5 bg-amber-500 text-white rounded-full hover:bg-amber-400 shadow-lg border border-white/10"
-                        title="Editar"
+                        title="Reconfigurar"
                     >
                         <Pencil size={10} />
                     </button>
 
-                    {/* Botón Borrar (Lógico) */}
                     <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            if (onDelete) onDelete(msg.id);
-                        }}
+                        onClick={(e) => { e.stopPropagation(); if (onDelete) onDelete(msg.id); }}
                         className="p-1.5 bg-rose-600 text-white rounded-full hover:bg-rose-500 shadow-lg border border-white/10"
-                        title="Retirar comentario"
+                        title="Protocolo de Poda/Inhibición"
                     >
                         <Trash2 size={10} />
                     </button>
                 </div>
             )}
 
-            {/* Cuerpo del Orbe */}
+            {/* 3. CUERPO DEL ORBE: Grayscale y Opacidad reducida si está inhibida */}
             <div
-                className={`relative min-w-[160px] max-w-[220px] p-3 rounded-[1.2rem] border backdrop-blur-md shadow-lg
+                className={`relative min-w-[160px] max-w-[220px] p-3 rounded-[1.2rem] border backdrop-blur-md shadow-lg transition-all
                 ${isRoot ? 'ring-1 ring-white/20' : ''} 
-                ${isDocente ? 'ring-2 ring-indigo-500/50 border-indigo-400/50' : 'border-white/10'}`}
+                ${isDocente && !isInhibited ? 'ring-2 ring-indigo-500/50 border-indigo-400/50' : 'border-white/10'}
+                ${isInhibited ? 'grayscale opacity-50 border-slate-700 brightness-50' : ''}`}
                 style={{
-                    backgroundColor: `${themeColor}15`,
-                    borderColor: isDocente ? '#818cf8' : `${themeColor}44`,
+                    backgroundColor: isInhibited ? '#0f172a' : `${themeColor}15`,
+                    borderColor: isInhibited ? '#334155' : (isDocente ? '#818cf8' : `${themeColor}44`),
                 }}
             >
-                {/* ETIQUETA DOCENTE: Ahora el Rayito lo lleva el profesor */}
-                {isDocente && (
+                {/* ETIQUETA DOCENTE (Se oculta si está inhibida para limpiar la visual) */}
+                {isDocente && !isInhibited && (
                     <div className="absolute -top-3 -left-1 bg-indigo-600 text-[7px] font-black px-2 py-0.5 rounded-full uppercase text-white flex items-center gap-1 shadow-lg border border-indigo-400 z-10">
                         <Zap size={8} fill="currentColor" />
                         {msg.alias}
@@ -69,27 +63,24 @@ const SynapseNode = memo(({ data }) => {
 
                 <div className="flex justify-between items-center mb-1.5">
                     <div className="flex items-center gap-1.5">
-                        {/* Pequeño pulso: Única marca secreta que solo tú (el docente) notarás en los hilos de IA */}
                         <div
                             className={`w-1.5 h-1.5 rounded-full shadow-[0_0_5px_currentColor] 
-    ${isAi ? 'animate-[pulse_1.5s_ease-in-out_infinite]' : ''}`} // Latido exclusivo para la IA
+                            ${isAi && !isInhibited ? 'animate-[pulse_1.5s_ease-in-out_infinite]' : ''}`}
                             style={{
-                                color: themeColor,
-                                backgroundColor: themeColor,
-                                // Si es IA, podemos hacer que el brillo sea ligeramente más intenso
-                                filter: isAi ? 'brightness(2.5)' : 'none'
+                                color: isInhibited ? '#475569' : themeColor,
+                                backgroundColor: isInhibited ? '#475569' : themeColor,
+                                filter: (isAi && !isInhibited) ? 'brightness(2.5)' : 'none'
                             }}
                         />
                         <span className="text-[8px] font-black uppercase tracking-tight truncate max-w-[100px] text-white/60">
                             {msg.alias}
                         </span>
                     </div>
-                    {/* El escudo solo aparece si es docente y no es una intervención secreta */}
-                    {isDocente && <Shield size={10} className="text-indigo-400" />}
+                    {isDocente && !isInhibited && <Shield size={10} className="text-indigo-400" />}
                 </div>
 
-                {/* Texto: Eliminamos la cursiva de IA para que no sospechen */}
-                <p className="text-[11px] leading-[1.3] font-medium mb-2 text-slate-100">
+                {/* TEXTO DE LA NEURONA */}
+                <p className={`text-[11px] leading-[1.3] font-medium mb-2 ${isInhibited ? 'text-slate-500 italic' : 'text-slate-100'}`}>
                     {msg.content.replace(/^> .*?\s/, "")}
                 </p>
 
@@ -100,26 +91,23 @@ const SynapseNode = memo(({ data }) => {
 
                     <div className="flex items-center gap-1">
                         <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onIsolate();
-                            }}
+                            onClick={(e) => { e.stopPropagation(); onIsolate(); }}
                             title="Aislar este debate"
                             className="p-1 rounded-full bg-white/5 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-400 transition-all border border-white/10"
                         >
                             <Maximize2 size={11} />
                         </button>
 
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onReply(msg, msg.content);
-                            }}
-                            title="Responder"
-                            className="p-1 rounded-full bg-white/5 hover:bg-white/10 text-white transition-all border border-white/10"
-                        >
-                            <MessageSquareReply size={12} />
-                        </button>
+                        {/* Impedimos respuesta si la neurona está inhibida */}
+                        {!isInhibited && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onReply(msg, msg.content); }}
+                                title="Responder"
+                                className="p-1 rounded-full bg-white/5 hover:bg-white/10 text-white transition-all border border-white/10"
+                            >
+                                <MessageSquareReply size={12} />
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
