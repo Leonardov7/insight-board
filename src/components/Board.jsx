@@ -100,14 +100,15 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditM
 
   useEffect(() => {
     setNodes((nds) => {
-      // 1. Si el número de nodos cambió (borrado o mensaje nuevo), actualizamos todo
+      // 1. Si hay más o menos neuronas, refrescamos todo el mapa
       if (initialNodes.length !== nds.length) return initialNodes;
 
-      // 2. Si el número es igual pero hubo una edición, actualizamos solo el contenido (data)
-      // manteniendo las posiciones actuales para que no "salten" las burbujas
+      // 2. Si el número es igual, buscamos si alguna neurona cambió su contenido (edición/inhibición)
       return nds.map(node => {
         const updatedNode = initialNodes.find(n => n.id === node.id);
-        if (updatedNode && JSON.stringify(updatedNode.data.msg) !== JSON.stringify(node.data.msg)) {
+        // Comparamos el contenido específico para disparar el render
+        if (updatedNode && updatedNode.data.msg.content !== node.data.msg.content) {
+          console.log("🔄 Actualizando visualización de neurona:", node.id);
           return { ...node, data: updatedNode.data };
         }
         return node;

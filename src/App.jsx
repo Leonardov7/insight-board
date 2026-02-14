@@ -144,36 +144,53 @@ function App() {
     setIsSidebarOpen(false);
   };
   const handleEditMessage = async (msgId, currentContent) => {
-    const newText = window.prompt("Editar comentario:", currentContent);
+    console.log("🧠 Iniciando remapeo de neurona:", msgId);
+    const newText = window.prompt("RECONFIGURAR NÚCLEO COGNITIVO:", currentContent);
+
     if (newText !== null && newText.trim() !== "" && newText !== currentContent) {
       try {
-        await updateMessage(msgId, newText);
-      } catch (e) { console.error("Error al editar:", e); }
+        console.log("🛰️ Enviando pulso de actualización a la red...");
+        await updateMessage(msgId, newText.trim());
+        console.log("✅ Sinapsis reconfigurada con éxito.");
+
+        // Forzamos actualización local inmediata para asegurar visión
+        fetchMessagesBySession(session.id);
+      } catch (e) {
+        console.error("❌ Fallo en la reconfiguración:", e);
+        alert("Error en la transmisión neuronal.");
+      }
     }
   };
 
 
   const handleSmartDelete = async (msgId) => {
-    // Verificamos si tiene "hijos" para decidir si borramos o censuramos
     const hasChildren = messages.some(m => m.parent_id === msgId);
+    console.log(`🧐 Analizando topología: ${hasChildren ? 'Rama activa' : 'Neurona terminal'}`);
 
     if (!hasChildren) {
-      // CASO HOJA: Borrado físico (desaparece la burbuja)
-      if (window.confirm("Este mensaje no tiene respuestas. ¿Eliminar permanentemente?")) {
+      // CASO HOJA: Borrado físico
+      if (window.confirm("¿Deseas disolver esta neurona aislada del flujo cognitivo?")) {
         try {
+          console.log("🗑️ Podando neurona terminal...");
           await deleteMessage(msgId);
-        } catch (e) { console.error("Error al borrar:", e); }
+          console.log("✅ Neurona disuelta.");
+        } catch (e) {
+          console.error("❌ Error al podar:", e);
+        }
       }
     } else {
-      // CASO NODO: Borrado lógico (mantiene la estructura)
-      if (window.confirm("Este mensaje tiene respuestas. Se marcará como 'retirado'.")) {
+      // CASO NODO: Borrado lógico (Inhibición)
+      if (window.confirm("Esta neurona posee conexiones sinápticas activas. Se inhibirá su núcleo para preservar la integridad de la red. ¿Proceder?")) {
         try {
-          await updateMessage(msgId, "🚫 Este aporte fue retirado por el docente.");
-        } catch (e) { console.error("Error al retirar:", e); }
+          console.log("🚫 Inhibiendo núcleo sináptico...");
+          await updateMessage(msgId, "🚫 [Sinapsis Inhibida por el Docente]");
+          console.log("✅ Núcleo neutralizado. Estructura preservada.");
+        } catch (e) {
+          console.error("❌ Error al inhibir:", e);
+        }
       }
     }
   };
-
   // --- LÓGICA DE NAVEGACIÓN ---
   if (!sessionAuth && isAdmin) return <LoginView />;
 
