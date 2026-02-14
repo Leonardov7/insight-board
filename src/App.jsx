@@ -163,29 +163,22 @@ function App() {
   };
 
   const handleSmartDelete = async (msgId) => {
-  // 1. Verificamos si el mensaje tiene "hijos" (comentarios que dependen de él)
+  // Comprobamos si el mensaje tiene "hijos" en el estado local de mensajes
   const hasChildren = messages.some(m => m.parent_id === msgId);
 
   if (!hasChildren) {
-    // CASO A: Es un nodo HOJA (al final del árbol). BORRADO FÍSICO.
-    if (window.confirm("Este nodo no tiene respuestas. ¿Deseas ELIMINARLO permanentemente?")) {
-      try {
-        await deleteMessage(msgId);
-      } catch (e) {
-        alert("Error al borrar");
-      }
+    // Es una HOJA: Podemos borrarla físicamente sin romper nada
+    if (window.confirm("Este mensaje no tiene respuestas. ¿Eliminar permanentemente?")) {
+      await deleteMessage(msgId);
     }
   } else {
-    // CASO B: Tiene descendencia. BORRADO LÓGICO (Censura).
-    if (window.confirm("Este nodo tiene respuestas. Se marcará como 'retirado' para no romper la estructura de la red.")) {
-      try {
-        await updateMessage(msgId, "🚫 Este aporte fue retirado por el docente.");
-      } catch (e) {
-        alert("Error al retirar");
-      }
+    // Tiene HIJOS: Hacemos borrado lógico (Censura) para no romper el árbol
+    if (window.confirm("Este mensaje tiene respuestas. Se marcará como 'retirado' para mantener la estructura.")) {
+      await updateMessage(msgId, "🚫 Este aporte fue retirado por el docente.");
     }
   }
 };
+
   // --- LÓGICA DE NAVEGACIÓN ---
   if (!sessionAuth && isAdmin) return <LoginView />;
 
