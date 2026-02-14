@@ -102,8 +102,18 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditM
 
   useEffect(() => {
     setNodes((nds) => {
-      const isCountDifferent = initialNodes.length !== nds.length;
-      return isCountDifferent ? initialNodes : nds;
+      // 1. Si el número de nodos cambió (borrado o mensaje nuevo), actualizamos todo
+      if (initialNodes.length !== nds.length) return initialNodes;
+
+      // 2. Si el número es igual pero hubo una edición, actualizamos solo el contenido (data)
+      // manteniendo las posiciones actuales para que no "salten" las burbujas
+      return nds.map(node => {
+        const updatedNode = initialNodes.find(n => n.id === node.id);
+        if (updatedNode && JSON.stringify(updatedNode.data.msg) !== JSON.stringify(node.data.msg)) {
+          return { ...node, data: updatedNode.data };
+        }
+        return node;
+      });
     });
     setEdges(initialEdges);
   }, [initialNodes, initialEdges, setNodes, setEdges]);
