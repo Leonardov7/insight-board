@@ -36,7 +36,6 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditM
       visibleMessages = rootNode ? [rootNode, ...descendants] : messages;
     }
 
-    // Creamos los nodos base usando los mensajes visibles
     let nodes = visibleMessages.map(msg => ({
       id: msg.id,
       type: 'synapse',
@@ -45,8 +44,8 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditM
         isAdminView: isAdmin,
         userAlias,
         onReply,
-        // CORRECCIÓN: Usamos directamente la lógica que viene de App.js
-        onDelete: onDeleteMessage, 
+        // PRIORIDAD: Usamos el borrado lógico para no romper la estructura del árbol
+        onDelete: onSoftDelete || onDeleteMessage, 
         onEdit: onEditMessage,
         isRoot: !msg.parent_id,
         onIsolate: () => setIsolatedId(msg.id)
