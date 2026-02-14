@@ -144,20 +144,17 @@ function App() {
     setIsSidebarOpen(false);
   };
   const handleEditMessage = async (msgId, currentContent) => {
-    console.log("🧠 Iniciando remapeo de neurona:", msgId);
-    const newText = window.prompt("RECONFIGURAR NÚCLEO COGNITIVO:", currentContent);
+    // Narrativa profesional: Reconfiguración de núcleo
+    const newText = window.prompt("RECONFIGURACIÓN DE NÚCLEO SINÁPTICO:", currentContent);
 
     if (newText !== null && newText.trim() !== "" && newText !== currentContent) {
       try {
-        console.log("🛰️ Enviando pulso de actualización a la red...");
+        console.log("🛰️ Transmitiendo pulso de reconfiguración...");
         await updateMessage(msgId, newText.trim());
-        console.log("✅ Sinapsis reconfigurada con éxito.");
-
-        // Forzamos actualización local inmediata para asegurar visión
+        // Forzamos actualización para asegurar que el motor detecte el cambio de contenido
         fetchMessagesBySession(session.id);
       } catch (e) {
-        console.error("❌ Fallo en la reconfiguración:", e);
-        alert("Error en la transmisión neuronal.");
+        console.error("❌ Error en la transmisión:", e);
       }
     }
   };
@@ -165,28 +162,26 @@ function App() {
 
   const handleSmartDelete = async (msgId) => {
     const hasChildren = messages.some(m => m.parent_id === msgId);
-    console.log(`🧐 Analizando topología: ${hasChildren ? 'Rama activa' : 'Neurona terminal'}`);
 
     if (!hasChildren) {
-      // CASO HOJA: Borrado físico
-      if (window.confirm("¿Deseas disolver esta neurona aislada del flujo cognitivo?")) {
+      // CASO HOJA: Poda Sináptica (Borrado Físico)
+      if (window.confirm("Se ha detectado una neurona terminal sin ramificaciones. ¿Deseas proceder con la poda sináptica permanente?")) {
         try {
-          console.log("🗑️ Podando neurona terminal...");
+          console.log("✂️ Ejecutando poda sináptica...");
           await deleteMessage(msgId);
-          console.log("✅ Neurona disuelta.");
         } catch (e) {
-          console.error("❌ Error al podar:", e);
+          console.error("❌ Fallo en la poda:", e);
         }
       }
     } else {
-      // CASO NODO: Borrado lógico (Inhibición)
-      if (window.confirm("Esta neurona posee conexiones sinápticas activas. Se inhibirá su núcleo para preservar la integridad de la red. ¿Proceder?")) {
+      // CASO NODO: Inhibición de Núcleo (Borrado Lógico)
+      if (window.confirm("Esta neurona actúa como nodo de interconexión. Para preservar la estabilidad de la red, se aplicará un protocolo de inhibición sobre su núcleo. ¿Confirmar acción?")) {
         try {
-          console.log("🚫 Inhibiendo núcleo sináptico...");
-          await updateMessage(msgId, "🚫 [Sinapsis Inhibida por el Docente]");
-          console.log("✅ Núcleo neutralizado. Estructura preservada.");
+          console.log("🚫 Aplicando protocolo de inhibición...");
+          // Mensaje profesional de neutralización
+          await updateMessage(msgId, "🚫 [NÚCLEO NEUTRALIZADO: PROTOCOLO DE MODERACIÓN ACTIVO]");
         } catch (e) {
-          console.error("❌ Error al inhibir:", e);
+          console.error("❌ Fallo en la inhibición:", e);
         }
       }
     }
@@ -297,8 +292,8 @@ function App() {
               userAlias={user?.name}
               onReply={(msg, text) => setReplyingTo({ msg, quoteText: text })}
               sessionStatus={session?.status}
-              onDeleteMessage={handleSmartDelete} // <--- Tu función inteligente
-              onEditMessage={handleEditMessage}   // <--- Tu función de edición
+              onDeleteMessage={handleSmartDelete} // Pasamos la lógica inteligente
+              onEditMessage={handleEditMessage}   // Pasamos la reconfiguración
             />
           </main>
 
