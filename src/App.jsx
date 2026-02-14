@@ -279,17 +279,19 @@ function App() {
           )}
 
           <main className="flex-1 relative bg-[#070709] z-10">
-            <Board
-              messages={messages}
-              isAdmin={isAdmin}
-              userAlias={user?.name}
-              onReply={(msg, text) => setReplyingTo({ msg, quoteText: text })}
-              sessionStatus={session?.status}
-              // CAMBIO: Ahora usamos tu lógica inteligente de "Hoja vs Árbol"
-              onDeleteMessage={handleSmartDelete}
-              onEditMessage={handleEditMessage}
-              onSoftDelete={handleSoftDelete}
-            />
+            <main className="flex-1 relative bg-[#070709] z-10">
+              <Board
+                messages={messages}
+                isAdmin={isAdmin}
+                userAlias={user?.name}
+                onReply={(msg, text) => setReplyingTo({ msg, quoteText: text })}
+                sessionStatus={session?.status}
+                // CORRECCIÓN: Ahora pasamos tu lógica inteligente (handleSmartDelete)
+                // Eliminamos 'onSoftDelete' para evitar conflictos, ya está incluido en SmartDelete
+                onDeleteMessage={handleSmartDelete}
+                onEditMessage={handleEditMessage}
+              />
+            </main>
           </main>
 
           <footer className="p-6 bg-[#0a0a0c]/95 border-t border-white/5 z-40">
