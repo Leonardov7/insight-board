@@ -58,7 +58,7 @@ export const useMessages = () => {
   }, []);
 
   // 3. Envío de mensajes: Mantiene todos los parámetros originales
-  const sendMessage = async (content, alias, color, parentId, sessionId, isAi = false) => {
+  const sendMessage = useCallback(async (content, alias, color, parentId, sessionId, isAi = false) => {
     if (!sessionId) return;
 
     const { error } = await supabase
@@ -75,10 +75,10 @@ export const useMessages = () => {
     if (error) {
       console.error("❌ Fallo en la sinapsis:", error.message);
     }
-  };
+  }, []);
 
   // 4. Actualización/Edición: Crucial para corregir o hacer borrado lógico sin romper el árbol
-  const updateMessage = async (messageId, newContent) => {
+  const updateMessage = useCallback(async (messageId, newContent) => {
     const { error } = await supabase
       .from('intervenciones')
       .update({ content: newContent })
@@ -88,10 +88,10 @@ export const useMessages = () => {
       console.error("❌ Error al actualizar:", error.message);
       throw error;
     }
-  };
+  }, []);
 
   // 5. Borrado físico: Elimina el registro por completo
-  const deleteMessage = async (messageId) => {
+  const deleteMessage = useCallback(async (messageId) => {
     const { error } = await supabase
       .from('intervenciones')
       .delete()
@@ -101,14 +101,14 @@ export const useMessages = () => {
       console.error("❌ Error al borrar:", error.message);
       throw error;
     }
-  };
+  }, []);
 
   return { 
     messages, 
     sendMessage, 
     fetchMessagesBySession, 
     subscribeToMessages, 
-    updateMessage, // <--- Nueva función para editar/borrado lógico
+    updateMessage, 
     deleteMessage 
   };
 };

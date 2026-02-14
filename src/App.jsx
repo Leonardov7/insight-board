@@ -144,17 +144,48 @@ function App() {
     setIsSidebarOpen(false);
   };
   const handleEditMessage = async (msgId, currentContent) => {
-    const newText = window.prompt("Editar comentario:", currentContent);
-    if (newText !== null && newText.trim() !== "") {
+  const newText = window.prompt("Editar comentario:", currentContent);
+  // Solo disparamos si el usuario escribió algo y no canceló
+  if (newText !== null && newText.trim() !== "" && newText !== currentContent) {
+    try {
       await updateMessage(msgId, newText);
+      // Opcional: Refrescamos localmente por si el realtime tarda
+      fetchMessagesBySession(session.id);
+    } catch (e) {
+      alert("Error al editar");
     }
-  };
+  }
+};
   const handleSoftDelete = async (msgId) => {
     if (window.confirm("¿Retirar este comentario? La estructura se mantendrá pero el texto será borrado.")) {
       await updateMessage(msgId, "🚫 Este aporte fue retirado por el docente.");
     }
   };
 
+  const handleSmartDelete = async (msgId) => {
+  // 1. Verificamos si el mensaje tiene "hijos" (comentarios que dependen de él)
+  const hasChildren = messages.some(m => m.parent_id === msgId);
+
+  if (!hasChildren) {
+    // CASO A: Es un nodo HOJA (al final del árbol). BORRADO FÍSICO.
+    if (window.confirm("Este nodo no tiene respuestas. ¿Deseas ELIMINARLO permanentemente?")) {
+      try {
+        await deleteMessage(msgId);
+      } catch (e) {
+        alert("Error al borrar");
+      }
+    }
+  } else {
+    // CASO B: Tiene descendencia. BORRADO LÓGICO (Censura).
+    if (window.confirm("Este nodo tiene respuestas. Se marcará como 'retirado' para no romper la estructura de la red.")) {
+      try {
+        await updateMessage(msgId, "🚫 Este aporte fue retirado por el docente.");
+      } catch (e) {
+        alert("Error al retirar");
+      }
+    }
+  }
+};
   // --- LÓGICA DE NAVEGACIÓN ---
   if (!sessionAuth && isAdmin) return <LoginView />;
 
