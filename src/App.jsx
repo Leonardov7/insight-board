@@ -144,48 +144,42 @@ function App() {
     setIsSidebarOpen(false);
   };
   const handleEditMessage = async (msgId, currentContent) => {
-    // Narrativa profesional: Reconfiguración de núcleo
-    const newText = window.prompt("RECONFIGURACIÓN DE NÚCLEO SINÁPTICO:", currentContent);
-
-    if (newText !== null && newText.trim() !== "" && newText !== currentContent) {
-      try {
-        console.log("🛰️ Transmitiendo pulso de reconfiguración...");
-        await updateMessage(msgId, newText.trim());
-        // Forzamos actualización para asegurar que el motor detecte el cambio de contenido
-        fetchMessagesBySession(session.id);
-      } catch (e) {
-        console.error("❌ Error en la transmisión:", e);
-      }
+  console.group(`🧠 Auditoría de Reconfiguración: ${msgId}`);
+  const newText = window.prompt("RECONFIGURAR NÚCLEO COGNITIVO:", currentContent);
+  
+  if (newText && newText !== currentContent) {
+    try {
+      await updateMessage(msgId, newText.trim());
+      console.log("🛰️ Pulso confirmado por el servidor.");
+    } catch (e) {
+      console.error("🚨 Fallo crítico en la transmisión.");
     }
-  };
+  }
+  console.groupEnd();
+};
 
 
   const handleSmartDelete = async (msgId) => {
-    const hasChildren = messages.some(m => m.parent_id === msgId);
+  console.group(`✂️ Auditoría de Poda/Inhibición: ${msgId}`);
+  const hasChildren = messages.some(m => m.parent_id === msgId);
 
+  try {
     if (!hasChildren) {
-      // CASO HOJA: Poda Sináptica (Borrado Físico)
-      if (window.confirm("Se ha detectado una neurona terminal sin ramificaciones. ¿Deseas proceder con la poda sináptica permanente?")) {
-        try {
-          console.log("✂️ Ejecutando poda sináptica...");
-          await deleteMessage(msgId);
-        } catch (e) {
-          console.error("❌ Fallo en la poda:", e);
-        }
+      if (window.confirm("¿Disolver neurona terminal?")) {
+        await deleteMessage(msgId);
+        console.log("💥 Neurona disuelta físicamente.");
       }
     } else {
-      // CASO NODO: Inhibición de Núcleo (Borrado Lógico)
-      if (window.confirm("Esta neurona actúa como nodo de interconexión. Para preservar la estabilidad de la red, se aplicará un protocolo de inhibición sobre su núcleo. ¿Confirmar acción?")) {
-        try {
-          console.log("🚫 Aplicando protocolo de inhibición...");
-          // Mensaje profesional de neutralización
-          await updateMessage(msgId, "🚫 [NÚCLEO NEUTRALIZADO: PROTOCOLO DE MODERACIÓN ACTIVO]");
-        } catch (e) {
-          console.error("❌ Fallo en la inhibición:", e);
-        }
+      if (window.confirm("¿Inhibir núcleo sináptico?")) {
+        await updateMessage(msgId, "🚫 [NÚCLEO NEUTRALIZADO]");
+        console.log("🔒 Núcleo inhibido lógicamente.");
       }
     }
-  };
+  } catch (e) {
+    console.error("🚨 Fallo en el protocolo de poda.");
+  }
+  console.groupEnd();
+};
   // --- LÓGICA DE NAVEGACIÓN ---
   if (!sessionAuth && isAdmin) return <LoginView />;
 
