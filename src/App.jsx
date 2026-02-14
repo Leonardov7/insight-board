@@ -144,42 +144,52 @@ function App() {
     setIsSidebarOpen(false);
   };
   const handleEditMessage = async (msgId, currentContent) => {
-  console.group(`🧠 Auditoría de Reconfiguración: ${msgId}`);
-  const newText = window.prompt("RECONFIGURAR NÚCLEO COGNITIVO:", currentContent);
-  
-  if (newText && newText !== currentContent) {
-    try {
-      await updateMessage(msgId, newText.trim());
-      console.log("🛰️ Pulso confirmado por el servidor.");
-    } catch (e) {
-      console.error("🚨 Fallo crítico en la transmisión.");
+    console.group(`🧠 Reconfiguración Neuronal: ${msgId}`);
+    const newText = window.prompt("RECONFIGURAR NÚCLEO COGNITIVO:", currentContent);
+
+    if (newText !== null && newText.trim() !== "" && newText !== currentContent) {
+      // 1. ACTUALIZACIÓN OPTIMISTA: Cambiamos el texto en pantalla YA MISMO
+      const oldMessages = [...messages];
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: newText.trim() } : m));
+
+      try {
+        console.log("🛰️ Transmitiendo pulso a la base de datos...");
+        const result = await updateMessage(msgId, newText.trim());
+
+        // Si llegamos aquí, Supabase confirmó la recepción
+        console.log("✅ Sinapsis confirmada por el servidor.");
+      } catch (e) {
+        console.error("🚨 Error en la transmisión. Revirtiendo cambios.");
+        // Si falla, devolvemos los mensajes a su estado original
+        setMessages(oldMessages);
+        alert("La red rechazó el cambio. Revisa los permisos en Supabase.");
+      }
     }
-  }
-  console.groupEnd();
-};
+    console.groupEnd();
+  };
 
 
   const handleSmartDelete = async (msgId) => {
-  console.group(`✂️ Auditoría de Poda/Inhibición: ${msgId}`);
-  const hasChildren = messages.some(m => m.parent_id === msgId);
+    console.group(`✂️ Auditoría de Poda/Inhibición: ${msgId}`);
+    const hasChildren = messages.some(m => m.parent_id === msgId);
 
-  try {
-    if (!hasChildren) {
-      if (window.confirm("¿Disolver neurona terminal?")) {
-        await deleteMessage(msgId);
-        console.log("💥 Neurona disuelta físicamente.");
+    try {
+      if (!hasChildren) {
+        if (window.confirm("¿Disolver neurona terminal?")) {
+          await deleteMessage(msgId);
+          console.log("💥 Neurona disuelta físicamente.");
+        }
+      } else {
+        if (window.confirm("¿Inhibir núcleo sináptico?")) {
+          await updateMessage(msgId, "🚫 [NÚCLEO NEUTRALIZADO]");
+          console.log("🔒 Núcleo inhibido lógicamente.");
+        }
       }
-    } else {
-      if (window.confirm("¿Inhibir núcleo sináptico?")) {
-        await updateMessage(msgId, "🚫 [NÚCLEO NEUTRALIZADO]");
-        console.log("🔒 Núcleo inhibido lógicamente.");
-      }
+    } catch (e) {
+      console.error("🚨 Fallo en el protocolo de poda.");
     }
-  } catch (e) {
-    console.error("🚨 Fallo en el protocolo de poda.");
-  }
-  console.groupEnd();
-};
+    console.groupEnd();
+  };
   // --- LÓGICA DE NAVEGACIÓN ---
   if (!sessionAuth && isAdmin) return <LoginView />;
 

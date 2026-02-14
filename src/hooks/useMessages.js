@@ -79,33 +79,35 @@ export const useMessages = () => {
 
   // 4. Actualización/Edición: Crucial para corregir o hacer borrado lógico sin romper el árbol
   const updateMessage = useCallback(async (messageId, newContent) => {
-    console.log(`📡 [HOOK] Intentando UPDATE en DB para ID: ${messageId}`);
     const { data, error } = await supabase
       .from('intervenciones')
       .update({ content: newContent })
       .eq('id', messageId)
-      .select(); // Forzamos devolución para confirmar
+      .select(); // Esto es vital para ver si se hizo el cambio
 
-    if (error) {
-      console.error("❌ [HOOK] Error de base de datos en UPDATE:", error.message);
-      throw error;
+    if (error) throw error;
+
+    // Si data está vacío, es que el RLS bloqueó el cambio
+    if (data.length === 0) {
+      console.error("⚠️ [ERROR DE PERMISOS] El servidor recibió la orden pero no cambió nada. Revisa las políticas RLS.");
+      alert("Error de seguridad: No tienes permisos para modificar esta neurona.");
+      return false;
     }
-    console.log("✅ [HOOK] DB actualizada correctamente:", data);
+    return true;
   }, []);
 
   // 5. Borrado físico: Elimina el registro por completo
   const deleteMessage = useCallback(async (messageId) => {
-    console.log(`📡 [HOOK] Intentando DELETE en DB para ID: ${messageId}`);
-    const { error } = await supabase
+    const { error, status } = await supabase
       .from('intervenciones')
       .delete()
       .eq('id', messageId);
 
-    if (error) {
-      console.error("❌ [HOOK] Error de base de datos en DELETE:", error.message);
-      throw error;
-    }
-    console.log("✅ [HOOK] Registro eliminado de la DB.");
+    if (error) throw error;
+
+    // En delete, verificamos el código de estado. Si es 204 y no hubo error, fue bien.
+    // Pero si el mensaje sigue ahí, es RLS.
+    console.log("🛰️ Respuesta del servidor al borrar:", status);
   }, []);
 
   return {
