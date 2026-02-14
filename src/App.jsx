@@ -144,35 +144,35 @@ function App() {
     setIsSidebarOpen(false);
   };
   const handleEditMessage = async (msgId, currentContent) => {
-  const newText = window.prompt("Editar comentario:", currentContent);
-  if (newText !== null && newText.trim() !== "" && newText !== currentContent) {
-    try {
-      await updateMessage(msgId, newText);
-    } catch (e) { console.error("Error al editar:", e); }
-  }
-};
+    const newText = window.prompt("Editar comentario:", currentContent);
+    if (newText !== null && newText.trim() !== "" && newText !== currentContent) {
+      try {
+        await updateMessage(msgId, newText);
+      } catch (e) { console.error("Error al editar:", e); }
+    }
+  };
 
- 
+
   const handleSmartDelete = async (msgId) => {
-  // Verificamos si tiene "hijos" para decidir si borramos o censuramos
-  const hasChildren = messages.some(m => m.parent_id === msgId);
+    // Verificamos si tiene "hijos" para decidir si borramos o censuramos
+    const hasChildren = messages.some(m => m.parent_id === msgId);
 
-  if (!hasChildren) {
-    // CASO HOJA: Borrado físico (desaparece la burbuja)
-    if (window.confirm("Este mensaje no tiene respuestas. ¿Eliminar permanentemente?")) {
-      try {
-        await deleteMessage(msgId);
-      } catch (e) { console.error("Error al borrar:", e); }
+    if (!hasChildren) {
+      // CASO HOJA: Borrado físico (desaparece la burbuja)
+      if (window.confirm("Este mensaje no tiene respuestas. ¿Eliminar permanentemente?")) {
+        try {
+          await deleteMessage(msgId);
+        } catch (e) { console.error("Error al borrar:", e); }
+      }
+    } else {
+      // CASO NODO: Borrado lógico (mantiene la estructura)
+      if (window.confirm("Este mensaje tiene respuestas. Se marcará como 'retirado'.")) {
+        try {
+          await updateMessage(msgId, "🚫 Este aporte fue retirado por el docente.");
+        } catch (e) { console.error("Error al retirar:", e); }
+      }
     }
-  } else {
-    // CASO NODO: Borrado lógico (mantiene la estructura)
-    if (window.confirm("Este mensaje tiene respuestas. Se marcará como 'retirado'.")) {
-      try {
-        await updateMessage(msgId, "🚫 Este aporte fue retirado por el docente.");
-      } catch (e) { console.error("Error al retirar:", e); }
-    }
-  }
-};
+  };
 
   // --- LÓGICA DE NAVEGACIÓN ---
   if (!sessionAuth && isAdmin) return <LoginView />;
@@ -274,17 +274,15 @@ function App() {
           )}
 
           <main className="flex-1 relative bg-[#070709] z-10">
-            <main className="flex-1 relative bg-[#070709] z-10">
-  <Board
-    messages={messages}
-    isAdmin={isAdmin}
-    userAlias={user?.name}
-    onReply={(msg, text) => setReplyingTo({ msg, quoteText: text })}
-    sessionStatus={session?.status}
-    onDeleteMessage={handleSmartDelete} // <--- Tu función inteligente
-    onEditMessage={handleEditMessage}   // <--- Tu función de edición
-  />
-</main>
+            <Board
+              messages={messages}
+              isAdmin={isAdmin}
+              userAlias={user?.name}
+              onReply={(msg, text) => setReplyingTo({ msg, quoteText: text })}
+              sessionStatus={session?.status}
+              onDeleteMessage={handleSmartDelete} // <--- Tu función inteligente
+              onEditMessage={handleEditMessage}   // <--- Tu función de edición
+            />
           </main>
 
           <footer className="p-6 bg-[#0a0a0c]/95 border-t border-white/5 z-40">

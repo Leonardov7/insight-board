@@ -14,7 +14,7 @@ import { supabase } from '../lib/supabase';
 const nodeTypes = { synapse: SynapseNode };
 
 // Agregamos onSoftDelete a las props que recibe el componente
-const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditMessage, onSoftDelete }) => {
+const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditMessage }) => {
   const [isolatedId, setIsolatedId] = useState(null);
 
   const getDescendants = useCallback((parentId, allMessages, result = []) => {
@@ -28,7 +28,6 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditM
 
   const { initialNodes, initialEdges } = useMemo(() => {
     if (!messages || messages.length === 0) return { initialNodes: [], initialEdges: [] };
-    
     let visibleMessages = messages;
     if (isolatedId) {
       const rootNode = messages.find(m => m.id === isolatedId);
@@ -45,8 +44,7 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditM
         isAdminView: isAdmin,
         userAlias,
         onReply,
-        // CORRECCIÓN: Usamos directamente la lógica que viene de App.js
-        onDelete: onDeleteMessage, 
+        onDelete: onDeleteMessage, // Aquí entra handleSmartDelete
         onEdit: onEditMessage,
         isRoot: !msg.parent_id,
         onIsolate: () => setIsolatedId(msg.id)
@@ -96,8 +94,7 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditM
 
     return { initialNodes: finalNodes, initialEdges: layouted.edges };
     // Añadimos onSoftDelete a las dependencias
-  }, [messages, isAdmin, userAlias, onReply, isolatedId, getDescendants, onDeleteMessage, onEditMessage, onSoftDelete]);
-
+  }, [messages, isAdmin, userAlias, onReply, isolatedId, getDescendants, onDeleteMessage, onEditMessage]);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
