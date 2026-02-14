@@ -144,40 +144,35 @@ function App() {
     setIsSidebarOpen(false);
   };
   const handleEditMessage = async (msgId, currentContent) => {
-    const newText = window.prompt("Editar comentario:", currentContent);
-    // Solo disparamos si el usuario escribió algo y no canceló
-    if (newText !== null && newText.trim() !== "" && newText !== currentContent) {
-      try {
-        await updateMessage(msgId, newText);
-        // Opcional: Refrescamos localmente por si el realtime tarda
-        fetchMessagesBySession(session.id);
-      } catch (e) {
-        alert("Error al editar");
-      }
-    }
-  };
-  const handleSoftDelete = async (msgId) => {
-    if (window.confirm("¿Retirar este comentario? La estructura se mantendrá pero el texto será borrado.")) {
-      await updateMessage(msgId, "🚫 Este aporte fue retirado por el docente.");
-    }
-  };
+  const newText = window.prompt("Editar comentario:", currentContent);
+  if (newText !== null && newText.trim() !== "" && newText !== currentContent) {
+    try {
+      await updateMessage(msgId, newText);
+    } catch (e) { console.error("Error al editar:", e); }
+  }
+};
 
+ 
   const handleSmartDelete = async (msgId) => {
-    // Comprobamos si el mensaje tiene "hijos" en el estado local de mensajes
-    const hasChildren = messages.some(m => m.parent_id === msgId);
+  // Verificamos si tiene "hijos" para decidir si borramos o censuramos
+  const hasChildren = messages.some(m => m.parent_id === msgId);
 
-    if (!hasChildren) {
-      // Es una HOJA: Podemos borrarla físicamente sin romper nada
-      if (window.confirm("Este mensaje no tiene respuestas. ¿Eliminar permanentemente?")) {
+  if (!hasChildren) {
+    // CASO HOJA: Borrado físico (desaparece la burbuja)
+    if (window.confirm("Este mensaje no tiene respuestas. ¿Eliminar permanentemente?")) {
+      try {
         await deleteMessage(msgId);
-      }
-    } else {
-      // Tiene HIJOS: Hacemos borrado lógico (Censura) para no romper el árbol
-      if (window.confirm("Este mensaje tiene respuestas. Se marcará como 'retirado' para mantener la estructura.")) {
-        await updateMessage(msgId, "🚫 Este aporte fue retirado por el docente.");
-      }
+      } catch (e) { console.error("Error al borrar:", e); }
     }
-  };
+  } else {
+    // CASO NODO: Borrado lógico (mantiene la estructura)
+    if (window.confirm("Este mensaje tiene respuestas. Se marcará como 'retirado'.")) {
+      try {
+        await updateMessage(msgId, "🚫 Este aporte fue retirado por el docente.");
+      } catch (e) { console.error("Error al retirar:", e); }
+    }
+  }
+};
 
   // --- LÓGICA DE NAVEGACIÓN ---
   if (!sessionAuth && isAdmin) return <LoginView />;
@@ -279,17 +274,17 @@ function App() {
           )}
 
           <main className="flex-1 relative bg-[#070709] z-10">
-            <Board
-              messages={messages}
-              isAdmin={isAdmin}
-              userAlias={user?.name}
-              onReply={(msg, text) => setReplyingTo({ msg, quoteText: text })}
-              sessionStatus={session?.status}
-              // CAMBIO: Ahora usamos tu lógica inteligente de "Hoja vs Árbol"
-              onDeleteMessage={handleSmartDelete}
-              onEditMessage={handleEditMessage}
-              onSoftDelete={handleSoftDelete}
-            />
+            <main className="flex-1 relative bg-[#070709] z-10">
+  <Board
+    messages={messages}
+    isAdmin={isAdmin}
+    userAlias={user?.name}
+    onReply={(msg, text) => setReplyingTo({ msg, quoteText: text })}
+    sessionStatus={session?.status}
+    onDeleteMessage={handleSmartDelete} // <--- Tu función inteligente
+    onEditMessage={handleEditMessage}   // <--- Tu función de edición
+  />
+</main>
           </main>
 
           <footer className="p-6 bg-[#0a0a0c]/95 border-t border-white/5 z-40">
