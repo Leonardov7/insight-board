@@ -47,7 +47,8 @@ function App() {
   const [ranking, setRanking] = useState([]);
   const [replyingTo, setReplyingTo] = useState(null);
 
-  const { messages, sendMessage, fetchMessagesBySession, subscribeToMessages, updateMessage, deleteMessage } = useMessages(); const onlineUsers = usePresence(session?.id, user);
+  const { messages, sendMessage, fetchMessagesBySession, subscribeToMessages, updateMessage, deleteMessage } = useMessages();
+  const onlineUsers = usePresence(session?.id, user);
 
   // --- ESCUCHA DE AUTENTICACIÓN ---
   useEffect(() => {
@@ -259,10 +260,11 @@ function App() {
               isAdmin={isAdmin}
               userAlias={user?.name}
               onReply={(msg, text) => setReplyingTo({ msg, quoteText: text })}
-              sessionStatus={session?.status} // <-- Agregamos esta
+              sessionStatus={session?.status}
               onDeleteMessage={deleteMessage}
-              onEditMessage={updateMessage} // <--- NUEVA
-              onSoftDelete={handleSoftDelete}   // <--- NUEVA
+              // CAMBIO: Pasamos las funciones locales que tienen los diálogos (prompt/confirm)
+              onEditMessage={handleEditMessage}
+              onSoftDelete={handleSoftDelete}
             />
           </main>
 

@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 // Mantenemos Zap para el Docente e incorporamos Trash2
 import { Shield, MessageSquareReply, Maximize2, Zap, Trash2, Pencil } from 'lucide-react';
+
 const SynapseNode = memo(({ data }) => {
     // Agregamos isAdminView a la extracción de datos sin tocar el resto
     const { msg, userAlias, onReply, isRoot, onIsolate, onDelete, onEdit, isAdminView } = data;

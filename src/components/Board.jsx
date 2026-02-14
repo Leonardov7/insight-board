@@ -13,10 +13,10 @@ import { supabase } from '../lib/supabase';
 
 const nodeTypes = { synapse: SynapseNode };
 
-const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditMessage }) => {
+// Agregamos onSoftDelete a las props que recibe el componente
+const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditMessage, onSoftDelete }) => {
   const [isolatedId, setIsolatedId] = useState(null);
 
-  // Función para encontrar todos los descendientes de un nodo (hijos, nietos, etc.)
   const getDescendants = useCallback((parentId, allMessages, result = []) => {
     const children = allMessages.filter(m => m.parent_id === parentId);
     children.forEach(child => {
@@ -26,10 +26,9 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditM
     return result;
   }, []);
 
-  // 1. Procesamiento de Nodos y Edges
   const { initialNodes, initialEdges } = useMemo(() => {
     if (!messages || messages.length === 0) return { initialNodes: [], initialEdges: [] };
-    // --- LÓGICA DE AISLAMIENTO ---
+    
     let visibleMessages = messages;
     if (isolatedId) {
       const rootNode = messages.find(m => m.id === isolatedId);
@@ -37,7 +36,6 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditM
       visibleMessages = rootNode ? [rootNode, ...descendants] : messages;
     }
 
-    // Creamos los nodos base usando los mensajes visibles
     let nodes = visibleMessages.map(msg => ({
       id: msg.id,
       type: 'synapse',
@@ -46,8 +44,9 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditM
         isAdminView: isAdmin,
         userAlias,
         onReply,
-        onDelete: onDeleteMessage, // Ahora sí reconocerá qué es esto
-        onEdit: onEditMessage,     // Agregado para la edición
+        // PRIORIDAD: Usamos el borrado lógico para no romper la estructura del árbol
+        onDelete: onSoftDelete || onDeleteMessage, 
+        onEdit: onEditMessage,
         isRoot: !msg.parent_id,
         onIsolate: () => setIsolatedId(msg.id)
       },
@@ -55,9 +54,7 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditM
       hasManualPosition: msg.x_pos !== null && msg.x_pos !== undefined && msg.x_pos !== 0
     }));
 
-    // Creamos las conexiones
     const seed = visibleMessages.find(m => !m.parent_id);
-
     const edges = visibleMessages
       .filter(msg => msg.id !== (isolatedId || seed?.id))
       .map(msg => {
@@ -83,13 +80,10 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditM
         };
       });
 
-    // Calculamos el layout automático solo para los que NO tienen posición manual
     const layouted = getLayoutedElements(nodes, edges, 'LR');
 
     const finalNodes = layouted.nodes.map(node => {
       const msg = visibleMessages.find(m => m.id === node.id);
-
-      // PRIORIDAD CRÍTICA: Si el mensaje ya tiene posición en la DB, ignoramos el layout
       if (msg && msg.x_pos !== null && msg.x_pos !== undefined && msg.x_pos !== 0) {
         return {
           ...node,
@@ -100,15 +94,13 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditM
     });
 
     return { initialNodes: finalNodes, initialEdges: layouted.edges };
-  }, [messages, isAdmin, userAlias, onReply, isolatedId, getDescendants, onDeleteMessage, onEditMessage]);
+    // Añadimos onSoftDelete a las dependencias
+  }, [messages, isAdmin, userAlias, onReply, isolatedId, getDescendants, onDeleteMessage, onEditMessage, onSoftDelete]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  // EFECTO TULLADO: Evita el reseteo innecesario cuando solo cambian los paneles laterales
   useEffect(() => {
-    // Solo actualizamos si el número de mensajes cambió o si cambiamos de sesión
-    // Esto evita que al abrir el sidebar se dispare el setNodes
     setNodes((nds) => {
       const isCountDifferent = initialNodes.length !== nds.length;
       return isCountDifferent ? initialNodes : nds;
@@ -116,7 +108,6 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditM
     setEdges(initialEdges);
   }, [initialNodes, initialEdges, setNodes, setEdges]);
 
-  // 2. Función para persistir el movimiento del Administrador
   const onNodeDragStop = useCallback(async (event, node) => {
     if (!isAdmin) return;
     const { id, position } = node;
@@ -150,7 +141,7 @@ const Board = ({ messages, isAdmin, userAlias, onReply, onDeleteMessage, onEditM
         onEdgesChange={onEdgesChange}
         onNodeDragStop={onNodeDragStop}
         nodeTypes={nodeTypes}
-        fitView={nodes.length > 0 && nodes.every(n => n.position.x === 0)} // Solo fitView si son nuevos
+        fitView={nodes.length > 0 && nodes.every(n => n.position.x === 0)}
         fitViewOptions={{ padding: 0.2 }}
         minZoom={0.05}
         maxZoom={2}
