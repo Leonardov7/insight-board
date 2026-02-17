@@ -1,3 +1,5 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY;
 const API_URL = "https://api.deepseek.com/v1/chat/completions";
 
@@ -7,16 +9,32 @@ const ALIAS_POOL = [
   "Perspectiva_B", "Curiosidad_Pura", "Estratega_01"
 ];
 
-// --- MÓDULO 1.2.1: AGENTE INFILTRADO ---
+// --- MÓDULO 1.2.1: AGENTE INFILTRADO (REPARADO PARA NO ATACARSE A SÍ MISMO) ---
 export const generateTargetedProvocations = async (messages) => {
+  if (!messages || messages.length === 0) return [];
+
+  // FILTRO TÉCNICO: Solo neuronas de estudiantes que no han sido provocadas aún
+  const validTargets = messages.filter(m => 
+    !m.is_ai && 
+    m.alias?.toLowerCase() !== 'docente' && 
+    m.alias?.toLowerCase() !== 'admin' &&
+    !messages.some(reply => reply.parent_id === m.id && reply.is_ai)
+  );
+
+  if (validTargets.length === 0) return [];
+
   const seed = messages.find(m => !m.parent_id);
   const sessionAlias = ALIAS_POOL[Math.floor(Math.random() * ALIAS_POOL.length)];
 
   const prompt = `
     Eres un estudiante en un debate. Tu rol es ser un "Infiltrado Provocador".
     PREGUNTA SEMILLA: "${seed?.content}"
-    HISTORIAL: ${messages.map(m => `[ID: ${m.id}] ${m.alias}: ${m.content}`).join('\n')}
-    TAREA: Identifica hasta 2 comentarios y cuestiona su lógica de forma incisiva pero educada.
+    
+    HISTORIAL DE ESTUDIANTES DISPONIBLES (Ataca solo a estos IDs): 
+    ${validTargets.map(m => `[ID: ${m.id}] ${m.alias}: ${m.content}`).join('\n')}
+    
+    TAREA: Identifica hasta 2 comentarios de la lista anterior y cuestiona su lógica de forma incisiva pero educada.
+    REGLA: No ataques al docente. No te respondas a ti mismo.
     JSON: { "provocations": [{"targetId": "id", "provocation": "pregunta corta", "alias": "${sessionAlias}"}] }
   `;
 
@@ -38,7 +56,7 @@ export const generateTargetedProvocations = async (messages) => {
   }
 };
 
-// --- MÓDULO 2.0: MONITOR SEMÁNTICO ---
+// --- MÓDULO 2.0: MONITOR SEMÁNTICO (TU CÓDIGO ORIGINAL INTACTO) ---
 export const getSemanticClusters = async (messages) => {
   if (messages.length < 3) return [];
 
@@ -66,16 +84,14 @@ export const getSemanticClusters = async (messages) => {
   }
 };
 
-// --- MÓDULO 3.0: GAMIFICACIÓN ROBUSTA (ACTUALIZADO) ---
+// --- MÓDULO 3.0: GAMIFICACIÓN ROBUSTA (TU CÓDIGO ORIGINAL INTACTO) ---
 export const getEngagementRanking = async (messages) => {
-  // 1. CONTEXTO TOTAL: Enviamos todo para que la IA entienda la jerarquía
   const fullContext = messages.map(m => ({
     role: m.alias?.toLowerCase() === 'docente' ? 'VERDAD_ACADÉMICA' : (m.is_ai ? 'PROVOCADOR' : 'ESTUDIANTE'),
     alias: m.alias,
     content: m.content
   }));
 
-  // 2. CANDIDATOS: Filtramos para que solo los estudiantes reales puedan ganar medallas
   const students = messages.filter(m => 
     !m.is_ai && 
     m.alias?.toLowerCase() !== 'docente' && 
@@ -84,7 +100,6 @@ export const getEngagementRanking = async (messages) => {
 
   console.log(`📊 [ANALISTA] Estudiantes reales para evaluar: ${students.length}`);
 
-  // Umbral de 5 mensajes de alumnos para asegurar que hay debate real
   if (students.length < 5) {
     console.warn("⚠️ [ANALISTA] Base insuficiente para ranking riguroso (min 5 alumnos).");
     return [];
@@ -131,8 +146,6 @@ export const getEngagementRanking = async (messages) => {
     
     const data = await response.json();
     const rawRanking = JSON.parse(data.choices[0].message.content).ranking;
-    
-    // Filtramos los valores nulos para enviar solo los ganadores reales a la interfaz
     const finalRanking = rawRanking.filter(item => item !== null);
     console.log("🏆 [ANALISTA] Cuadro de Honor validado:", finalRanking);
     return finalRanking;
