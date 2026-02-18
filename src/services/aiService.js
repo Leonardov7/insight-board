@@ -7,42 +7,47 @@ const ALIAS_POOL = [
   "Perspectiva_B", "Curiosidad_Pura", "Estratega_01"
 ];
 
-// --- MÓDULO 1.2.1: AGENTE INFILTRADO (EDICIÓN QUIRÚRGICA: OBJETIVO ÚNICO Y BLINDAJE DOCENTE) ---
+// --- MÓDULO 1.2.1: AGENTE INFILTRADO (FILTRO DE SEGURIDAD NIVEL 3) ---
 export const generateTargetedProvocations = async (messages) => {
   if (!messages || messages.length === 0) return [];
 
-  // 1. FILTRO DE EXCLUSIÓN: Identificamos solo estudiantes reales
-  // Limpiamos espacios y pasamos a minúsculas para evitar fallos por alias como "Docente "
-  const forbiddenAliases = ['docente', 'profesor', 'profesora', 'catedratico', 'admin', 'administrador'];
+  // Localizamos la semilla (Primer comentario del docente)
+  const seed = messages.find(m => !m.parent_id);
   
+  // Lista de alias prohibidos con limpieza de strings
+  const forbiddenAliases = ['docente', 'profesor', 'profesora', 'catedratico', 'admin', 'administrador', 'instructor'];
+  
+  // FILTRO QUIRÚRGICO:
   const validTargets = messages.filter(m => {
     const aliasClean = m.alias?.toLowerCase().trim();
     return (
-      !m.is_ai && 
-      !forbiddenAliases.includes(aliasClean) &&
-      !messages.some(reply => reply.parent_id === m.id && reply.is_ai)
+      m.parent_id !== null &&            // 1. Si no tiene padre, es la semilla (DOCENTE). EXCLUIDO.
+      m.id !== seed?.id &&               // 2. Verificación por ID de la semilla. EXCLUIDO.
+      !m.is_ai &&                        // 3. No es un mensaje previo de la IA.
+      !forbiddenAliases.includes(aliasClean) && // 4. El alias no coincide con roles de autoridad.
+      !messages.some(reply => reply.parent_id === m.id && reply.is_ai) // 5. No ha sido provocado ya.
     );
   });
 
+  // Si no hay estudiantes aptos para ser provocados, abortamos misión
   if (validTargets.length === 0) {
-    console.log("🤫 Sin objetivos válidos (Docente protegido o red ya provocada).");
+    console.log("🛡️ Filtro Activo: No hay objetivos estudiantiles válidos (Docente y Semilla protegidos).");
     return [];
   }
 
-  const seed = messages.find(m => !m.parent_id);
   const sessionAlias = ALIAS_POOL[Math.floor(Math.random() * ALIAS_POOL.length)];
 
   const prompt = `
     Eres un estudiante en un debate. Tu rol es ser un "Infiltrado Provocador".
-    PREGUNTA SEMILLA: "${seed?.content}"
+    PREGUNTA SEMILLA (NO ATACAR): "${seed?.content}"
     
-    HISTORIAL DE ESTUDIANTES DISPONIBLES (Elige solo uno de esta lista): 
+    LISTA DE ESTUDIANTES REALES (Elige EXACTAMENTE UNO para cuestionar): 
     ${validTargets.map(m => `[ID: ${m.id}] ${m.alias}: ${m.content}`).join('\n')}
     
     TAREA: 
-    1. Identifica EXACTAMENTE 1 comentario de la lista anterior. No más.
+    1. Identifica EXACTAMENTE 1 comentario de la lista de estudiantes anterior.
     2. Cuestiona su lógica de forma incisiva pero educada.
-    3. REGLA CRÍTICA DE IDENTIDAD: Tienes estrictamente prohibido dirigirte al docente, cuestionar sus mensajes o mencionarlo. Tu único objetivo es el alumnado.
+    3. REGLA DE ORO: Tienes estrictamente prohibido dirigirte al docente, cuestionar la semilla o responder a otros bots. Tu foco es el estudiante.
     
     JSON: { "provocations": [{"targetId": "id_elegido", "provocation": "pregunta corta", "alias": "${sessionAlias}"}] }
   `;
@@ -62,9 +67,10 @@ export const generateTargetedProvocations = async (messages) => {
     });
     
     const data = await response.json();
-    const result = JSON.parse(data.choices[0].message.content).provocations || [];
+    const content = data.choices[0].message.content;
+    const result = JSON.parse(content).provocations || [];
     
-    // Forzamos el retorno de una sola provocación por ejecución de botón
+    // Garantizamos una sola participación por ejecución
     return result.slice(0, 1);
     
   } catch (error) {
@@ -73,7 +79,7 @@ export const generateTargetedProvocations = async (messages) => {
   }
 };
 
-// --- MÓDULO 2.0: MONITOR SEMÁNTICO (TU CÓDIGO ORIGINAL SIN MODIFICAR) ---
+// --- MÓDULO 2.0: MONITOR SEMÁNTICO (ORIGINAL COMPLETO) ---
 export const getSemanticClusters = async (messages) => {
   if (messages.length < 3) return [];
 
@@ -101,7 +107,7 @@ export const getSemanticClusters = async (messages) => {
   }
 };
 
-// --- MÓDULO 3.0: GAMIFICACIÓN ROBUSTA (TU CÓDIGO ORIGINAL SIN MODIFICAR) ---
+// --- MÓDULO 3.0: GAMIFICACIÓN ROBUSTA (ORIGINAL COMPLETO) ---
 export const getEngagementRanking = async (messages) => {
   // 1. CONTEXTO TOTAL: Enviamos todo para que la IA entienda la jerarquía
   const fullContext = messages.map(m => ({
@@ -165,9 +171,9 @@ export const getEngagementRanking = async (messages) => {
     });
     
     const data = await response.json();
-    const rawRanking = JSON.parse(data.choices[0].message.content).ranking;
+    const content = data.choices[0].message.content;
+    const rawRanking = JSON.parse(content).ranking;
     
-    // Filtramos los valores nulos para enviar solo los ganadores reales a la interfaz
     const finalRanking = rawRanking.filter(item => item !== null);
     console.log("🏆 [ANALISTA] Cuadro de Honor validado:", finalRanking);
     return finalRanking;
