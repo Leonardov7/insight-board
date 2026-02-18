@@ -7,21 +7,27 @@ const ALIAS_POOL = [
   "Perspectiva_B", "Curiosidad_Pura", "Estratega_01"
 ];
 
-// --- MÓDULO 1.2.1: AGENTE INFILTRADO (CORRECCIÓN: OBJETIVO ÚNICO Y SIN DOCENTE) ---
+// --- MÓDULO 1.2.1: AGENTE INFILTRADO (EDICIÓN QUIRÚRGICA: OBJETIVO ÚNICO Y BLINDAJE DOCENTE) ---
 export const generateTargetedProvocations = async (messages) => {
   if (!messages || messages.length === 0) return [];
 
-  // 1. RESTRICCIÓN TOTAL: Solo estudiantes, no IA, no Docente/Admin y no repetidos
-  const validTargets = messages.filter(m => 
-    !m.is_ai && 
-    m.alias?.toLowerCase() !== 'docente' && 
-    m.alias?.toLowerCase() !== 'admin' &&
-    m.alias?.toLowerCase() !== 'administrador' &&
-    m.alias?.toLowerCase() !== 'profesor' &&
-    !messages.some(reply => reply.parent_id === m.id && reply.is_ai)
-  );
+  // 1. FILTRO DE EXCLUSIÓN: Identificamos solo estudiantes reales
+  // Limpiamos espacios y pasamos a minúsculas para evitar fallos por alias como "Docente "
+  const forbiddenAliases = ['docente', 'profesor', 'profesora', 'catedratico', 'admin', 'administrador'];
+  
+  const validTargets = messages.filter(m => {
+    const aliasClean = m.alias?.toLowerCase().trim();
+    return (
+      !m.is_ai && 
+      !forbiddenAliases.includes(aliasClean) &&
+      !messages.some(reply => reply.parent_id === m.id && reply.is_ai)
+    );
+  });
 
-  if (validTargets.length === 0) return [];
+  if (validTargets.length === 0) {
+    console.log("🤫 Sin objetivos válidos (Docente protegido o red ya provocada).");
+    return [];
+  }
 
   const seed = messages.find(m => !m.parent_id);
   const sessionAlias = ALIAS_POOL[Math.floor(Math.random() * ALIAS_POOL.length)];
@@ -30,13 +36,13 @@ export const generateTargetedProvocations = async (messages) => {
     Eres un estudiante en un debate. Tu rol es ser un "Infiltrado Provocador".
     PREGUNTA SEMILLA: "${seed?.content}"
     
-    HISTORIAL DE ESTUDIANTES REALES (Elige solo uno de esta lista): 
+    HISTORIAL DE ESTUDIANTES DISPONIBLES (Elige solo uno de esta lista): 
     ${validTargets.map(m => `[ID: ${m.id}] ${m.alias}: ${m.content}`).join('\n')}
     
     TAREA: 
     1. Identifica EXACTAMENTE 1 comentario de la lista anterior. No más.
     2. Cuestiona su lógica de forma incisiva pero educada.
-    3. REGLA CRÍTICA: Tienes estrictamente prohibido dirigirte al docente o comentar sus mensajes. Tu objetivo es solo el estudiante.
+    3. REGLA CRÍTICA DE IDENTIDAD: Tienes estrictamente prohibido dirigirte al docente, cuestionar sus mensajes o mencionarlo. Tu único objetivo es el alumnado.
     
     JSON: { "provocations": [{"targetId": "id_elegido", "provocation": "pregunta corta", "alias": "${sessionAlias}"}] }
   `;
@@ -47,7 +53,10 @@ export const generateTargetedProvocations = async (messages) => {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DEEPSEEK_API_KEY}` },
       body: JSON.stringify({
         model: "deepseek-chat",
-        messages: [{ role: "system", content: "Responde solo en JSON." }, { role: "user", content: prompt }],
+        messages: [
+          { role: "system", content: "Responde solo en JSON." }, 
+          { role: "user", content: prompt }
+        ],
         response_format: { type: 'json_object' }
       })
     });
@@ -55,7 +64,7 @@ export const generateTargetedProvocations = async (messages) => {
     const data = await response.json();
     const result = JSON.parse(data.choices[0].message.content).provocations || [];
     
-    // Forzamos que solo devuelva la primera provocación por cada vez que se presione el botón
+    // Forzamos el retorno de una sola provocación por ejecución de botón
     return result.slice(0, 1);
     
   } catch (error) {
@@ -64,7 +73,7 @@ export const generateTargetedProvocations = async (messages) => {
   }
 };
 
-// --- MÓDULO 2.0: MONITOR SEMÁNTICO (INTACTO) ---
+// --- MÓDULO 2.0: MONITOR SEMÁNTICO (TU CÓDIGO ORIGINAL SIN MODIFICAR) ---
 export const getSemanticClusters = async (messages) => {
   if (messages.length < 3) return [];
 
@@ -92,14 +101,16 @@ export const getSemanticClusters = async (messages) => {
   }
 };
 
-// --- MÓDULO 3.0: GAMIFICACIÓN ROBUSTA (INTACTO) ---
+// --- MÓDULO 3.0: GAMIFICACIÓN ROBUSTA (TU CÓDIGO ORIGINAL SIN MODIFICAR) ---
 export const getEngagementRanking = async (messages) => {
+  // 1. CONTEXTO TOTAL: Enviamos todo para que la IA entienda la jerarquía
   const fullContext = messages.map(m => ({
     role: m.alias?.toLowerCase() === 'docente' ? 'VERDAD_ACADÉMICA' : (m.is_ai ? 'PROVOCADOR' : 'ESTUDIANTE'),
     alias: m.alias,
     content: m.content
   }));
 
+  // 2. CANDIDATOS: Filtramos para que solo los estudiantes reales puedan ganar medallas
   const students = messages.filter(m => 
     !m.is_ai && 
     m.alias?.toLowerCase() !== 'docente' && 
@@ -108,6 +119,7 @@ export const getEngagementRanking = async (messages) => {
 
   console.log(`📊 [ANALISTA] Estudiantes reales para evaluar: ${students.length}`);
 
+  // Umbral de 5 mensajes de alumnos para asegurar que hay debate real
   if (students.length < 5) {
     console.warn("⚠️ [ANALISTA] Base insuficiente para ranking riguroso (min 5 alumnos).");
     return [];
@@ -154,6 +166,8 @@ export const getEngagementRanking = async (messages) => {
     
     const data = await response.json();
     const rawRanking = JSON.parse(data.choices[0].message.content).ranking;
+    
+    // Filtramos los valores nulos para enviar solo los ganadores reales a la interfaz
     const finalRanking = rawRanking.filter(item => item !== null);
     console.log("🏆 [ANALISTA] Cuadro de Honor validado:", finalRanking);
     return finalRanking;
