@@ -1,4 +1,3 @@
-// Eliminamos la importación de Google que causaba el error de Rollup
 const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY;
 const API_URL = "https://api.deepseek.com/v1/chat/completions";
 
@@ -8,15 +7,17 @@ const ALIAS_POOL = [
   "Perspectiva_B", "Curiosidad_Pura", "Estratega_01"
 ];
 
-// --- MÓDULO 1.2.1: AGENTE INFILTRADO ---
+// --- MÓDULO 1.2.1: AGENTE INFILTRADO (CORRECCIÓN: OBJETIVO ÚNICO Y SIN DOCENTE) ---
 export const generateTargetedProvocations = async (messages) => {
   if (!messages || messages.length === 0) return [];
 
-  // Filtro técnico: Solo neuronas de estudiantes reales que no han sido provocadas
+  // 1. RESTRICCIÓN TOTAL: Solo estudiantes, no IA, no Docente/Admin y no repetidos
   const validTargets = messages.filter(m => 
     !m.is_ai && 
     m.alias?.toLowerCase() !== 'docente' && 
     m.alias?.toLowerCase() !== 'admin' &&
+    m.alias?.toLowerCase() !== 'administrador' &&
+    m.alias?.toLowerCase() !== 'profesor' &&
     !messages.some(reply => reply.parent_id === m.id && reply.is_ai)
   );
 
@@ -29,12 +30,15 @@ export const generateTargetedProvocations = async (messages) => {
     Eres un estudiante en un debate. Tu rol es ser un "Infiltrado Provocador".
     PREGUNTA SEMILLA: "${seed?.content}"
     
-    HISTORIAL DE ESTUDIANTES DISPONIBLES (Ataca solo a estos IDs): 
+    HISTORIAL DE ESTUDIANTES REALES (Elige solo uno de esta lista): 
     ${validTargets.map(m => `[ID: ${m.id}] ${m.alias}: ${m.content}`).join('\n')}
     
-    TAREA: Identifica hasta 2 comentarios de la lista anterior y cuestiona su lógica de forma incisiva pero educada.
-    REGLA: No ataques al docente. No te respondas a ti mismo.
-    JSON: { "provocations": [{"targetId": "id", "provocation": "pregunta corta", "alias": "${sessionAlias}"}] }
+    TAREA: 
+    1. Identifica EXACTAMENTE 1 comentario de la lista anterior. No más.
+    2. Cuestiona su lógica de forma incisiva pero educada.
+    3. REGLA CRÍTICA: Tienes estrictamente prohibido dirigirte al docente o comentar sus mensajes. Tu objetivo es solo el estudiante.
+    
+    JSON: { "provocations": [{"targetId": "id_elegido", "provocation": "pregunta corta", "alias": "${sessionAlias}"}] }
   `;
 
   try {
@@ -47,15 +51,20 @@ export const generateTargetedProvocations = async (messages) => {
         response_format: { type: 'json_object' }
       })
     });
+    
     const data = await response.json();
-    return JSON.parse(data.choices[0].message.content).provocations || [];
+    const result = JSON.parse(data.choices[0].message.content).provocations || [];
+    
+    // Forzamos que solo devuelva la primera provocación por cada vez que se presione el botón
+    return result.slice(0, 1);
+    
   } catch (error) {
     console.error("Error en provocación:", error);
     return [];
   }
 };
 
-// --- MÓDULO 2.0: MONITOR SEMÁNTICO ---
+// --- MÓDULO 2.0: MONITOR SEMÁNTICO (INTACTO) ---
 export const getSemanticClusters = async (messages) => {
   if (messages.length < 3) return [];
 
@@ -83,7 +92,7 @@ export const getSemanticClusters = async (messages) => {
   }
 };
 
-// --- MÓDULO 3.0: GAMIFICACIÓN ROBUSTA ---
+// --- MÓDULO 3.0: GAMIFICACIÓN ROBUSTA (INTACTO) ---
 export const getEngagementRanking = async (messages) => {
   const fullContext = messages.map(m => ({
     role: m.alias?.toLowerCase() === 'docente' ? 'VERDAD_ACADÉMICA' : (m.is_ai ? 'PROVOCADOR' : 'ESTUDIANTE'),
