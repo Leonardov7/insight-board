@@ -1,5 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
+// Eliminamos la importación de Google que causaba el error de Rollup
 const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY;
 const API_URL = "https://api.deepseek.com/v1/chat/completions";
 
@@ -9,11 +8,11 @@ const ALIAS_POOL = [
   "Perspectiva_B", "Curiosidad_Pura", "Estratega_01"
 ];
 
-// --- MÓDULO 1.2.1: AGENTE INFILTRADO (REPARADO PARA NO ATACARSE A SÍ MISMO) ---
+// --- MÓDULO 1.2.1: AGENTE INFILTRADO ---
 export const generateTargetedProvocations = async (messages) => {
   if (!messages || messages.length === 0) return [];
 
-  // FILTRO TÉCNICO: Solo neuronas de estudiantes que no han sido provocadas aún
+  // Filtro técnico: Solo neuronas de estudiantes reales que no han sido provocadas
   const validTargets = messages.filter(m => 
     !m.is_ai && 
     m.alias?.toLowerCase() !== 'docente' && 
@@ -56,7 +55,7 @@ export const generateTargetedProvocations = async (messages) => {
   }
 };
 
-// --- MÓDULO 2.0: MONITOR SEMÁNTICO (TU CÓDIGO ORIGINAL INTACTO) ---
+// --- MÓDULO 2.0: MONITOR SEMÁNTICO ---
 export const getSemanticClusters = async (messages) => {
   if (messages.length < 3) return [];
 
@@ -84,7 +83,7 @@ export const getSemanticClusters = async (messages) => {
   }
 };
 
-// --- MÓDULO 3.0: GAMIFICACIÓN ROBUSTA (TU CÓDIGO ORIGINAL INTACTO) ---
+// --- MÓDULO 3.0: GAMIFICACIÓN ROBUSTA ---
 export const getEngagementRanking = async (messages) => {
   const fullContext = messages.map(m => ({
     role: m.alias?.toLowerCase() === 'docente' ? 'VERDAD_ACADÉMICA' : (m.is_ai ? 'PROVOCADOR' : 'ESTUDIANTE'),
