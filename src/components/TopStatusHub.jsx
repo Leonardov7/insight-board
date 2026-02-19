@@ -6,7 +6,7 @@ const TopStatusHub = ({ connectedUsers = [], ranking = [], sessionStatus }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    // CAMBIO: Alineado a la derecha (right-20) y ancho reducido (w-72)
+    // Alineado a la derecha (right-20) y ancho reducido (w-72)
     <div className="fixed top-[75px] right-20 z-40 w-72 transition-all duration-500 ease-in-out">
       {/* BARRA COMPACTA */}
       <div 
@@ -33,14 +33,16 @@ const TopStatusHub = ({ connectedUsers = [], ranking = [], sessionStatus }) => {
           ${isExpanded ? 'max-h-[60vh] opacity-100 p-4' : 'max-h-0 opacity-0 p-0 border-none'}`}
       >
         <div className="space-y-6">
-          {/* Usuarios Conectados */}
+          {/* Usuarios Conectados con Scroll Vertical */}
           <section>
             <p className="text-[7px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Conexiones Activas</p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-col gap-1.5 max-h-[180px] overflow-y-auto overflow-x-hidden pr-2 custom-scrollbar">
               {connectedUsers.map((user, idx) => (
-                <div key={idx} className="flex items-center gap-1.5 px-2 py-1 bg-white/5 border border-white/5 rounded-lg">
+                <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/5 rounded-lg shrink-0">
                   <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: user.color }} />
-                  <span className="text-[8px] font-bold text-slate-400 uppercase truncate max-w-[60px]">{user.name}</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase truncate">
+                    {user.name}
+                  </span>
                 </div>
               ))}
             </div>
