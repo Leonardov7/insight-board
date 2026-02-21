@@ -88,7 +88,7 @@ const AccessGuard = ({ children, isAdmin, session, user: userProp, setSession, o
     e.preventDefault();
     setLoading(true);
     setError('');
-    const code = codigoBusqueda.toUpperCase();
+    const code = codigoBusqueda.trim().toUpperCase();
 
     const { data, error } = await supabase
       .from('sesiones')
